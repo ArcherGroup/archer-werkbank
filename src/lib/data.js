@@ -283,3 +283,6 @@ export function datumKort(iso) {
   const d = new Date(iso)
   return d.toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' })
 }
+
+/* de dagen van de editie, voor de zijbalk en het overzicht */
+export const DAG_NAMEN = { 0: 'Dag 0 · Voorbereiding', 1: 'Dag 1 · Anthony', 2: 'Dag 2 · Vastgoed', 3: 'Dag 3 · Fiscaliteit', 4: 'Dag 4 · Afronding' }
