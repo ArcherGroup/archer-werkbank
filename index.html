@@ -4,8 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex, nofollow" />
+    <meta name="color-scheme" content="light dark" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230000ff'/%3E%3Ctext x='16' y='23' font-family='Inter,Arial,sans-serif' font-size='19' font-weight='800' fill='white' text-anchor='middle'%3EA%3C/text%3E%3C/svg%3E" />
     <title>Werkbank · Archer Invest masterclass februari 2027</title>
+    <script>
+      // Vóór de eerste paint het juiste thema zetten — geen flikkering.
+      try {
+        var t = localStorage.getItem('werkbank-thema');
+        var donker = t === 'donker' || (t !== 'licht' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.thema = donker ? 'donker' : 'licht';
+      } catch (e) {
+        document.documentElement.dataset.thema = 'licht';
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

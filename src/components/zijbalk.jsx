@@ -1,7 +1,15 @@
 import React, { useMemo } from 'react'
-import * as D from '../lib/data'
 import { DAG_NAMEN } from '../lib/data'
 import { StatusStip } from './basis'
+import { Icoon } from './Icoon'
+import { useRovingTabindex } from '../hooks/useRovingTabindex'
+import { Tip } from './tip'
+
+const VAST = [
+  { id: '#/', icoon: 'overzicht', titel: 'Overzicht' },
+  { id: '#/planning', icoon: 'planning', titel: 'Planning' },
+  { id: '#/bronnen', icoon: 'bronnen', titel: 'Bronnen' },
+]
 
 export function Zijbalk({ route, naar, blokken, bronnen, beslissingen, voorstellen }) {
   const perDag = useMemo(() => {
@@ -18,25 +26,55 @@ export function Zijbalk({ route, naar, blokken, bronnen, beslissingen, voorstell
   const openVoorstel = voorstellen.filter((v) => v.status === 'open').length
   const kernbronnen = bronnen.filter((b) => b.status === 'kernbron').length
 
-  const is = (p) => route === p
+  // Eén tabstop voor de hele navigatie; pijlen en j/k verplaatsen de focus.
+  const ids = useMemo(() => {
+    const uit = VAST.map((v) => v.id)
+    for (const dag of [0, 1, 2, 3, 4]) for (const b of perDag[dag] || []) uit.push(`#/blok/${b.id}`)
+    return uit
+  }, [perDag])
+
+  const { itemProps, lijstProps } = useRovingTabindex(ids, { beginId: route })
+
+  const teller = (id, aantal, extra = '') => {
+    if (aantal == null) return null
+    return <span className="zij-teller">{extra ? `${aantal}${extra}` : aantal}</span>
+  }
+
+  const zijItem = (id, inhoud, titel, extra) => (
+    <button
+      key={id}
+      className={`zij-item ${route === id ? 'actief' : ''}`}
+      onClick={() => naar(id)}
+      aria-current={route === id ? 'page' : undefined}
+      {...itemProps(id)}
+    >
+      {inhoud}
+      {titel && (
+        <Tip tekst={titel} kant="rechts">
+          <span className="titel-tekst">{titel}</span>
+        </Tip>
+      )}
+      {extra}
+    </button>
+  )
 
   return (
-    <aside className="zijbalk">
+    <nav className="zijbalk" aria-label="Navigatie" {...lijstProps}>
       <div className="zij-sectie">
-        <button className={`zij-item ${is('#/') || is('#/') ? (route === '#/' ? 'actief' : '') : ''}`} onClick={() => naar('#/')}>
-          <span className="code">⛁</span>
-          <span className="titel-tekst">Overzicht</span>
-        </button>
-        <button className={`zij-item ${route === '#/planning' ? 'actief' : ''}`} onClick={() => naar('#/planning')}>
-          <span className="code">🧭</span>
-          <span className="titel-tekst">Planning</span>
-          {openBesl + openVoorstel > 0 && <span className="zij-teller">{openBesl + openVoorstel}</span>}
-        </button>
-        <button className={`zij-item ${route === '#/bronnen' ? 'actief' : ''}`} onClick={() => naar('#/bronnen')}>
-          <span className="code">🔗</span>
-          <span className="titel-tekst">Bronnen</span>
-          <span className="zij-teller">{kernbronnen ? `${kernbronnen}★` : bronnen.length}</span>
-        </button>
+        {VAST.map((v) =>
+          zijItem(
+            v.id,
+            <span className="zij-icoon">
+              <Icoon naam={v.icoon} maat={15} />
+            </span>,
+            v.titel,
+            v.id === '#/planning'
+              ? teller(v.id, openBesl + openVoorstel > 0 ? openBesl + openVoorstel : null)
+              : v.id === '#/bronnen'
+                ? teller(v.id, kernbronnen || bronnen.length, kernbronnen ? '★' : '')
+                : null,
+          ),
+        )}
       </div>
 
       {[0, 1, 2, 3, 4].map((dag) => {
@@ -45,21 +83,17 @@ export function Zijbalk({ route, naar, blokken, bronnen, beslissingen, voorstell
         return (
           <div className="zij-sectie" key={dag}>
             <div className="zij-titel">{DAG_NAMEN[dag]}</div>
-            {rows.map((b) => (
-              <button
-                key={b.id}
-                className={`zij-item ${route === `#/blok/${b.id}` ? 'actief' : ''}`}
-                onClick={() => naar(`#/blok/${b.id}`)}
-                title={`${b.titel} · ${b.status}`}
-              >
-                <span className="code">{b.code}</span>
-                <span className="titel-tekst">{b.titel}</span>
-                <StatusStip status={b.status} />
-              </button>
-            ))}
+            {rows.map((b) =>
+              zijItem(
+                `#/blok/${b.id}`,
+                <span className="code">{b.code}</span>,
+                b.titel,
+                <StatusStip status={b.status} />,
+              ),
+            )}
           </div>
         )
       })}
-    </aside>
+    </nav>
   )
 }

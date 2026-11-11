@@ -1,88 +1,199 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as D from '../lib/data'
-import { sb } from '../lib/supabase'
 import { renderMd, splitsFrontmatter } from '../lib/md'
 import { Kruimel, Pill } from '../components/basis'
 import { Notities } from '../components/notities'
+import { Icoon } from '../components/Icoon'
+import { LegeStaat } from '../components/leegstaat'
+import { Skelet, SkeletAlinea } from '../components/skelet'
+import { Dialoog } from '../components/dialoog'
+import { meld } from '../components/meldingen'
+import { useSneltoets } from '../hooks/useSneltoets'
+import { useTraagLaden } from '../hooks/useTraagLaden'
+import { zetVies, wisVies } from '../lib/vies'
 
-export function DocPagina({ docId, naar, naam, blokken, herlaad, tik }) {
+export function DocPagina({ docId, naar, naam, blokken, bronnen, herlaad, tik }) {
   const [doc, setDoc] = useState(null)
+  const [geladen, setGeladen] = useState(false)
   const [modus, setModus] = useState('lees') // lees | bewerk | historiek
   const [klad, setKlad] = useState('')
+  const [basis, setBasis] = useState('')
   const [historiek, setHistoriek] = useState([])
   const [notities, setNotities] = useState([])
-  const [bronnenVanBlok, setBronnenVanBlok] = useState([])
   const [bezig, setBezig] = useState(false)
-  const [melding, setMelding] = useState('')
+  const [fout, setFout] = useState('')
+  const [vraag, setVraag] = useState(null) // { soort: 'herstel' | 'weggooien', versie? }
+  const bewaarRef = useRef(null)
+  const modusRef = useRef(modus)
+  const kladRef = useRef(klad)
+  const basisRef = useRef(basis)
+  modusRef.current = modus
+  kladRef.current = klad
+  basisRef.current = basis
 
-  const herlaadDoc = useCallback(async () => {
+  const traag = useTraagLaden(!geladen)
+
+  const herlaadDoc = useCallback(async ({ respecteerKlad = false } = {}) => {
     try {
       const d = await D.laadDocument(docId)
       setDoc(d)
+      const lokaalVies = modusRef.current === 'bewerk' && kladRef.current !== basisRef.current
+      // Een realtime-wijziging ergens anders mag nooit stil een lopende
+      // bewerking overschrijven. De lokale tekst blijft staan; de gebruiker
+      // beslist zelf wat er gebeurt.
+      if (respecteerKlad && lokaalVies) {
+        if ((d.inhoud ?? '') !== basisRef.current) {
+          meld('Dit stuk is elders gewijzigd. Je lokale tekst blijft staan — bewaar of herlaad bewust.', { fout: true })
+        }
+        return
+      }
+      setBasis(d.inhoud ?? '')
       setKlad(d.inhoud ?? '')
-    } catch {
+      setFout('')
+    } catch (e) {
       setDoc(null)
+      setFout('Dit document kon niet geladen worden.')
+    } finally {
+      setGeladen(true)
     }
   }, [docId])
 
   useEffect(() => {
+    setGeladen(false)
     herlaadDoc()
     D.laadNotities('document', docId).then(setNotities).catch(() => {})
-  }, [herlaadDoc, docId, tik])
+  }, [herlaadDoc, docId])
 
+  // Realtime: alleen de serverversie/metadata verversen, nooit een lopende
+  // bewerking overschrijven.
   useEffect(() => {
+    if (!tik) return
+    herlaadDoc({ respecteerKlad: true })
+  }, [tik, herlaadDoc])
+
+  // De bronnen van dit dagdeel zitten al in de globale data; geen extra query
+// nodig. Zo blijft de lijst ook meteen live via de bestaande realtime-tik.
+  const bronnenVanBlok = useMemo(() => {
     const b = doc?.blok_id
-    if (b) {
-      sb.from('bronnen').select('id,titel,url,status').eq('blok_id', b).then(({ data }) => setBronnenVanBlok(data ?? []))
-    }
-  }, [doc?.blok_id])
+    if (!b) return []
+    return (bronnen ?? [])
+      .filter((x) => x.blok_id === b)
+      .map((x) => ({ id: x.id, titel: x.titel, url: x.url, status: x.status }))
+  }, [bronnen, doc?.blok_id])
 
   useEffect(() => {
     if (modus === 'historiek') D.laadHistoriek(docId).then(setHistoriek).catch(() => {})
   }, [modus, docId])
 
+  const vies = modus === 'bewerk' && klad !== basis
+
+  // Werkverlies bewaken: de app vraagt eerst voor ze navigeert, en de browser
+  // waarschuwt bij het sluiten van het tabblad.
+  useEffect(() => {
+    if (vies) zetVies(() => true)
+    else wisVies()
+    return () => wisVies()
+  }, [vies])
+
+  useEffect(() => {
+    if (!vies) return
+    const f = (e) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', f)
+    return () => window.removeEventListener('beforeunload', f)
+  }, [vies])
+
+  const bewaar = useCallback(async () => {
+    if (!doc || bezig) return
+    if (klad === basis) {
+      setModus('lees')
+      return
+    }
+    setBezig(true)
+    setFout('')
+    try {
+      const nieuw = await D.bewaarDocument(doc, klad, naam)
+      setDoc(nieuw)
+      setBasis(klad)
+      setModus('lees')
+      meld('Bewaard. De vorige versie staat in de historiek.')
+      herlaad?.()
+    } catch (e) {
+      setFout('Bewaren mislukte. Je tekst staat er nog; probeer opnieuw of download hem eerst.')
+    } finally {
+      setBezig(false)
+    }
+  }, [doc, klad, basis, naam, herlaad, bezig])
+
+  bewaarRef.current = bewaar
+
+  // ⌘S bewaart ook vanuit de editor (en houdt de browser-dialoog tegen).
+  useSneltoets('s', () => bewaarRef.current?.(), { ookInInvoerveld: true })
+
+  const terugzetten = async (h) => {
+    setVraag(null)
+    setBezig(true)
+    setFout('')
+    try {
+      await D.bewaarDocument(doc, h.inhoud ?? '', naam)
+      await herlaadDoc()
+      setModus('lees')
+      meld(`Versie ${h.versie} is teruggezet.`)
+      herlaad?.()
+    } catch {
+      setFout('Terugzetten mislukte. Probeer opnieuw.')
+    } finally {
+      setBezig(false)
+    }
+  }
+
+  const download = () => {
+    const blob = new Blob([doc?.inhoud ?? ''], { type: 'text/markdown;charset=utf-8' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `${doc?.titel ?? 'document'}.md`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
+  if (!doc && traag) {
+    return (
+      <main className="hoofd">
+        <div className="hoofd-binnen">
+          <Skelet breedte="38%" hoogte={22} straal={6} />
+          <div style={{ height: 12 }} />
+          <Skelet breedte="62%" hoogte={12} />
+          <div style={{ height: 26 }} />
+          <SkeletAlinea lijnen={4} />
+          <div style={{ height: 22 }} />
+          <SkeletAlinea lijnen={6} />
+        </div>
+      </main>
+    )
+  }
+
   if (!doc)
     return (
       <main className="hoofd">
         <div className="hoofd-binnen">
-          <div className="leeg-melding">Dit document is er niet (meer).</div>
+          <LegeStaat
+            icoon="document"
+            titel={fout || 'Dit document is er niet (meer)'}
+            uitleg="De link klopt niet meer, of het stuk is verwijderd."
+            acties={
+              <button className="knop primair" onClick={() => naar('#/')}>
+                Terug naar het overzicht
+              </button>
+            }
+          />
         </div>
       </main>
     )
 
   const blok = blokken.find((b) => b.id === doc.blok_id)
   const { front, body } = splitsFrontmatter(doc.inhoud ?? '')
-  const vies = klad !== (doc.inhoud ?? '')
-
-  const bewaar = async () => {
-    setBezig(true)
-    setMelding('')
-    try {
-      const nieuw = await D.bewaarDocument(doc, klad, naam)
-      setDoc(nieuw)
-      setModus('lees')
-      setMelding('Bewaard. De vorige versie staat in de historiek.')
-      herlaad?.()
-    } catch (e) {
-      setMelding('Bewaren mislukte: ' + (e.message || e))
-    } finally {
-      setBezig(false)
-    }
-  }
-
-  const herstel = async (h) => {
-    if (!confirm(`Versie ${h.versie} terugzetten? De huidige inhoud gaat naar de historiek.`)) return
-    setBezig(true)
-    try {
-      await D.bewaarDocument(doc, h.inhoud ?? '', naam)
-      await herlaadDoc()
-      setModus('lees')
-      setMelding(`Versie ${h.versie} is teruggezet.`)
-      herlaad?.()
-    } finally {
-      setBezig(false)
-    }
-  }
 
   return (
     <>
@@ -97,10 +208,10 @@ export function DocPagina({ docId, naar, naam, blokken, herlaad, tik }) {
             ]}
           />
           <div className="pagina-kop">
-            <h1>{doc.titel}</h1>
+            <h1 title={doc.titel}>{doc.titel}</h1>
             <div className="onder">
               <Pill soort="accent">{doc.soort}</Pill>
-              <span>
+              <span className="cijfers">
                 v{doc.versie ?? 1} · {D.bytesLeesbaar(doc.bytes)}
                 {doc.bewerkt_door ? ` · laatst bewerkt door ${doc.bewerkt_door}` : ''}
                 {doc.updated_at ? ` · ${D.datumKort(doc.updated_at)}` : ''}
@@ -112,23 +223,16 @@ export function DocPagina({ docId, naar, naam, blokken, herlaad, tik }) {
             {modus === 'lees' && (
               <>
                 <button className="knop primair" onClick={() => setModus('bewerk')}>
-                  ✏️ Bewerken
+                  <Icoon naam="bewerken" maat={14} />
+                  Bewerken
                 </button>
                 <button className="knop" onClick={() => setModus('historiek')}>
-                  🕘 Historiek
+                  <Icoon naam="geschiedenis" maat={14} />
+                  Historiek
                 </button>
-                <button
-                  className="knop"
-                  onClick={() => {
-                    const blob = new Blob([doc.inhoud ?? ''], { type: 'text/markdown' })
-                    const a = document.createElement('a')
-                    a.href = URL.createObjectURL(blob)
-                    a.download = `${doc.titel}.md`
-                    a.click()
-                    URL.revokeObjectURL(a.href)
-                  }}
-                >
-                  ⤓ Download
+                <button className="knop" onClick={download}>
+                  <Icoon naam="downloaden" maat={14} />
+                  Download
                 </button>
               </>
             )}
@@ -137,19 +241,11 @@ export function DocPagina({ docId, naar, naam, blokken, herlaad, tik }) {
                 <button className="knop primair" onClick={bewaar} disabled={bezig || !vies}>
                   {bezig ? 'Bewaren…' : vies ? 'Bewaar nieuwe versie' : 'Niets gewijzigd'}
                 </button>
-                <button
-                  className="knop"
-                  onClick={() => {
-                    if (!vies || confirm('Wijzigingen weggooien?')) {
-                      setKlad(doc.inhoud ?? '')
-                      setModus('lees')
-                    }
-                  }}
-                >
+                <button className="knop" onClick={() => (vies ? setVraag({ soort: 'weggooien' }) : setModus('lees'))}>
                   Annuleer
                 </button>
                 <span className="meta-klein" style={{ alignSelf: 'center' }}>
-                  {klad.length.toLocaleString('nl-BE')} tekens
+                  <kbd className="toets">⌘S</kbd> bewaart · {klad.length.toLocaleString('nl-BE')} tekens
                 </span>
               </>
             )}
@@ -160,7 +256,23 @@ export function DocPagina({ docId, naar, naam, blokken, herlaad, tik }) {
             )}
           </div>
 
-          {melding && <div className="pl-kaart" style={{ padding: '9px 14px' }}>{melding}</div>}
+          {fout && (
+            <div className="foutkaart" role="alert">
+              <div className="kop">
+                <Icoon naam="waarschuwing" maat={14} />
+                Er ging iets mis
+              </div>
+              <div>{fout}</div>
+              <div className="acties">
+                <button className="knop" onClick={bewaar} disabled={bezig}>
+                  Opnieuw proberen
+                </button>
+                <button className="knop zacht" onClick={download}>
+                  Downloaden
+                </button>
+              </div>
+            </div>
+          )}
 
           {modus === 'lees' && (
             <article className="md">
@@ -181,20 +293,28 @@ export function DocPagina({ docId, naar, naam, blokken, herlaad, tik }) {
                   }
                 }}
                 spellCheck={false}
+                aria-label="Inhoud van het document, in markdown"
               />
             </div>
           )}
 
           {modus === 'historiek' && (
             <div>
-              {historiek.length === 0 && <div className="leeg-tekst">Nog geen oudere versies; dit stuk is nog maar één keer bewaard.</div>}
+              {historiek.length === 0 && (
+                <LegeStaat
+                  icoon="geschiedenis"
+                  titel="Nog geen oudere versies"
+                  uitleg="Dit stuk is pas één keer bewaard. Zodra iemand een nieuwe versie bewaart, verschijnt de vorige hier."
+                  compact
+                />
+              )}
               {historiek.map((h) => (
                 <div className="historiek-rij" key={h.id}>
-                  <b>v{h.versie}</b>
+                  <b className="cijfers">v{h.versie}</b>
                   <span className="meta-klein">
                     {h.bewerkt_door || 'onbekend'} · {D.datumKort(h.bewaard_op)} · {D.bytesLeesbaar((h.inhoud ?? '').length)}
                   </span>
-                  <button className="knop zacht" style={{ marginLeft: 'auto' }} onClick={() => herstel(h)}>
+                  <button className="knop zacht" style={{ marginLeft: 'auto' }} onClick={() => setVraag({ soort: 'herstel', versie: h.versie, inhoud: h.inhoud })}>
                     Terugzetten
                   </button>
                 </div>
@@ -203,6 +323,7 @@ export function DocPagina({ docId, naar, naam, blokken, herlaad, tik }) {
           )}
         </div>
       </main>
+
       <aside className="inspector">
         <div className="insp-titel">Notities bij dit stuk</div>
         <Notities
@@ -216,13 +337,8 @@ export function DocPagina({ docId, naar, naam, blokken, herlaad, tik }) {
           <>
             <div className="insp-titel">Bronnen van dit dagdeel ({bronnenVanBlok.length})</div>
             {bronnenVanBlok.slice(0, 12).map((b) => (
-              <button
-                key={b.id}
-                className="bron-rij"
-                style={{ borderBottom: '1px solid var(--line)', borderRadius: 8 }}
-                onClick={() => naar(`#/bron/${b.id}`)}
-              >
-                <span className={`status-stip ${b.status}`} />
+              <button key={b.id} className="bron-rij" onClick={() => naar(`#/bron/${b.id}`)} title={b.titel || b.url}>
+                <span className={`status-stip ${b.status}`} role="img" aria-label={`Status: ${b.status}`} title={`Status: ${b.status}`} />
                 <span className="midden">
                   <div className="t">{b.titel || b.url}</div>
                   <div className="u">{b.url}</div>
@@ -233,6 +349,29 @@ export function DocPagina({ docId, naar, naam, blokken, herlaad, tik }) {
           </>
         )}
       </aside>
+
+      <Dialoog
+        open={vraag?.soort === 'herstel'}
+        titel={`Versie ${vraag?.versie ?? ''} terugzetten?`}
+        tekst="De huidige inhoud gaat naar de historiek, dus je kunt altijd terug."
+        actie="Terugzetten"
+        opAnnuleer={() => setVraag(null)}
+        opBevestig={() => terugzetten({ versie: vraag?.versie, inhoud: vraag?.inhoud })}
+      />
+
+      <Dialoog
+        open={vraag?.soort === 'weggooien'}
+        titel="Wijzigingen weggooien?"
+        tekst="Je hebt tekst aangepast die nog niet bewaard is. Als je nu annuleert, gaat die tekst verloren."
+        actie="Weggooien"
+        verscheurend
+        opAnnuleer={() => setVraag(null)}
+        opBevestig={() => {
+          setVraag(null)
+          setKlad(basis)
+          setModus('lees')
+        }}
+      />
     </>
   )
 }

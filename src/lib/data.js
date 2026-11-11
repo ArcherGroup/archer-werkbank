@@ -254,7 +254,8 @@ export function abonneer(cb) {
   return kanaal
 }
 
-const KLEUREN = ['#0a84ff', '#30b0c7', '#22a06b', '#f0a020', '#e0492f', '#8b5cf6', '#d6336c']
+// Alle kleuren halen ≥ 4,5:1 met witte initialen (WCAG AA), ook in donker.
+const KLEUREN = ['#0b6fd6', '#0f766e', '#1a7f37', '#b45309', '#b3400a', '#7c3aed', '#c2255c']
 
 export function kleurVoor(naam) {
   let h = 0

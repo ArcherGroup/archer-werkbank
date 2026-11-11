@@ -1,31 +1,79 @@
 import React from 'react'
 import * as D from '../lib/data'
+import { Icoon } from './Icoon'
+import { Toets } from './tip'
+import { MOD, ariaShortcut } from '../lib/keys'
 
-export function Topbar({ naam, online, opZoeken, opWissel }) {
+const THEMA_LABEL = { auto: 'volgt het systeem', licht: 'licht', donker: 'donker' }
+const THEMA_VOLGEND = { auto: 'licht', licht: 'donker', donker: 'auto' }
+
+export function Topbar({ naam, online, thema, opThema, opZoeken, opHulp, opWissel }) {
+  const volgend = THEMA_VOLGEND[thema] ?? 'auto'
+  const icoon = thema === 'auto' ? 'autoThema' : thema === 'licht' ? 'zon' : 'maan'
+  const themaLabel = `Thema: ${THEMA_LABEL[thema] ?? 'volgt het systeem'} — klik voor ${THEMA_LABEL[volgend]}`
+
   return (
-    <div className="topbar">
+    <header className="topbar">
       <div className="merk">
-        <span className="blokje">A</span> Werkbank · Masterclass februari 2027
+        <span className="blokje" aria-hidden="true">
+          A
+        </span>
+        <span className="merk-tekst">Werkbank · Masterclass februari 2027</span>
       </div>
-      <button className="zoekknop" onClick={opZoeken}>
+
+      <button className="zoekknop" onClick={opZoeken} aria-keyshortcuts={ariaShortcut('k')} aria-label="Zoeken en springen">
+        <Icoon naam="zoeken" maat={14} />
         <span>Zoek of spring…</span>
-        <kbd>⌘K</kbd>
+        <Toets k="K" />
       </button>
+
       <div className="topbar-rechts">
-        <div className="aanwezig">
-          {online.slice(0, 5).map((n) => (
-            <span key={n} className="stip" style={{ background: D.kleurVoor(n) }} title={`${n} is online`}>
+        <div
+          className="aanwezig"
+          role="status"
+          aria-label={online.length ? `Online: ${online.join(', ')}` : 'Niemand anders online'}
+        >
+          <span className="sr-only">
+            {online.length ? `Online: ${online.join(', ')}` : 'Niemand anders online'}
+          </span>
+          {online.slice(0, 3).map((n) => (
+            <span
+              key={n}
+              className="stip"
+              style={{ background: D.kleurVoor(n) }}
+              title={`${n} is online`}
+              aria-hidden="true"
+            >
               {D.initialen(n)}
             </span>
           ))}
+          {online.length > 3 && (
+            <span className="stip meer" title={online.slice(3).join(', ')} aria-hidden="true">
+              +{online.length - 3}
+            </span>
+          )}
         </div>
-        <button className="ik-knop" onClick={opWissel} title="Naam wisselen">
-          <span className="stip" style={{ background: D.kleurVoor(naam) }}>
+
+        <button className="ik-knop" onClick={opWissel} title="Naam wisselen" aria-label={`Naam wisselen (nu ${naam})`}>
+          <span className="stip" style={{ background: D.kleurVoor(naam) }} aria-hidden="true">
             {D.initialen(naam)}
           </span>
-          {naam}
+          <span className="ik-naam">{naam}</span>
+        </button>
+
+        <button className="ik-knop icoon-knop" onClick={opHulp} aria-label={`Sneltoetsen (${MOD}?)`} title="Sneltoetsen (?)">
+          <Icoon naam="info" maat={16} />
+        </button>
+
+        <button
+          className="ik-knop icoon-knop"
+          onClick={() => opThema(volgend)}
+          aria-label={themaLabel}
+          title={themaLabel}
+        >
+          <Icoon naam={icoon} maat={16} />
         </button>
       </div>
-    </div>
+    </header>
   )
 }

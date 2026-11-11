@@ -2,12 +2,13 @@ import React from 'react'
 
 /* Basisbouwstenen: pillen, statusstippen en het kruimelpad. */
 
-export function Pill({ kinderen, soort }) {
-  return <span className={`pill ${soort ?? 'stil'}`}>{kinderen}</span>
+export function Pill({ children, soort }) {
+  return <span className={`pill ${soort ?? 'stil'}`}>{children}</span>
 }
 
 export function StatusStip({ status }) {
-  return <span className={`stip-status ${status || 'Leeg'}`} title={status} />
+  const s = status || 'Leeg'
+  return <span className={`stip-status ${s}`} role="img" aria-label={`Status: ${s}`} title={`Status: ${s}`} />
 }
 
 export function Kruimel({ delen, naar }) {
