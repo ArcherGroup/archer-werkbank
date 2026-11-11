@@ -5,8 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:lokaal": "vite --port 8982 --strictPort",
+    "agent:lokaal": "python3 agent/onderzoek_lokaal.py",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test tests/*.test.mjs && python3 -m unittest discover -s tests -p 'test_*.py'"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",

@@ -4,6 +4,16 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   base: '/archer-werkbank/',
   plugins: [react()],
+  // Alleen Vite's lokale ontwikkelserver gebruikt deze proxy. De gepubliceerde
+  // statische site krijgt geen publiek of betaald agent-endpoint.
+  server: {
+    proxy: {
+      '/archer-werkbank/api/lokaal-onderzoek': {
+        target: 'http://127.0.0.1:8983',
+        rewrite: (pad) => pad.replace(/^\/archer-werkbank/, ''),
+      },
+    },
+  },
   build: {
     outDir: 'docs',
     rollupOptions: {

@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import * as D from '../lib/data'
+import { zichtbareBronnen, veiligeBronUrl } from '../lib/bron-check'
 import { Icoon } from '../components/Icoon'
 import { LegeStaat } from '../components/leegstaat'
 import { Skelet, SkeletAlinea } from '../components/skelet'
@@ -12,6 +13,39 @@ const FILTERS = [
   ['kernbron', 'Kernbron'],
 ]
 
+/* Twee zelfstandige acties: in de werkbank lezen of de oorspronkelijke
+   website openen. Een link in een button zou ongeldig en ontoegankelijk zijn. */
+export function BronRij({ bron: b, naar }) {
+  const adres = veiligeBronUrl(b.url)
+  return (
+    <div className="bron-lijst-item">
+      <button className="bron-rij" onClick={() => naar(`#/bron/${b.id}`)} title={b.titel || b.url}>
+        <span className={`status-stip ${b.status}`} role="img" aria-label={`Status: ${b.status}`} title={`Status: ${b.status}`} />
+        <span className="midden">
+          <span className="t">{b.titel || b.url}</span>
+          <span className="u" style={{ display: 'block' }}>
+            {b.titel && b.titel !== b.url ? b.url : ''}
+            {b.blok_id ? ` · ${b.blok_id}` : ''}
+            {b.opgehaald_op ? ` · eerder opgeslagen ${D.datumKort(b.opgehaald_op)}` : ''}
+          </span>
+        </span>
+        <Icoon naam="chevronRechts" maat={14} className="pijl" />
+      </button>
+      {adres && (
+        <a
+          className="bron-direct knop zacht"
+          href={adres}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Open origineel in een nieuw tabblad: ${b.titel || b.url}`}
+        >
+          Origineel <Icoon naam="extern" maat={13} />
+        </a>
+      )}
+    </div>
+  )
+}
+
 export function BronnenPagina({ naar, bronnen, blokken, naam, herlaad, geladen }) {
   const [filter, setFilter] = useState('alle')
   const [blokFilter, setBlokFilter] = useState('')
@@ -22,6 +56,9 @@ export function BronnenPagina({ naar, bronnen, blokken, naam, herlaad, geladen }
   const [nieuwBlok, setNieuwBlok] = useState('')
   const [urlFout, setUrlFout] = useState('')
   const [bezig, setBezig] = useState(false)
+  const [limiet, setLimiet] = useState(200)
+
+  useEffect(() => { setLimiet(200) }, [filter, blokFilter, q])
 
   const kernbronnen = bronnen.filter((b) => b.status === 'kernbron').length
 
@@ -36,6 +73,7 @@ export function BronnenPagina({ naar, bronnen, blokken, naam, herlaad, geladen }
   }, [bronnen, filter, blokFilter, q])
 
   const heeftFilters = filter !== 'alle' || blokFilter || q.trim()
+  const pagina = zichtbareBronnen(gefilterd, limiet)
 
   if (!geladen)
     return (
@@ -194,8 +232,8 @@ export function BronnenPagina({ naar, bronnen, blokken, naam, herlaad, geladen }
               <Icoon naam="zoeken" maat={14} />
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="zoek in titel of url…" aria-label="Zoek in bronnen" />
             </div>
-            <span className="meta-klein cijfers" style={{ alignSelf: 'center' }}>
-              {gefilterd.length} getoond
+            <span className="meta-klein cijfers" style={{ alignSelf: 'center' }} aria-live="polite">
+              {pagina.items.length} van {pagina.totaal} getoond
             </span>
           </div>
 
@@ -222,23 +260,12 @@ export function BronnenPagina({ naar, bronnen, blokken, naam, herlaad, geladen }
                 }
               />
             )}
-            {gefilterd.slice(0, 200).map((b) => (
-              <button key={b.id} className="bron-rij" onClick={() => naar(`#/bron/${b.id}`)} title={b.titel || b.url}>
-                <span className={`status-stip ${b.status}`} role="img" aria-label={`Status: ${b.status}`} title={`Status: ${b.status}`} />
-                <span className="midden">
-                  <div className="t">{b.titel || b.url}</div>
-                  <div className="u">
-                    {b.url}
-                    {b.blok_id ? ` · ${b.blok_id}` : ''}
-                    {b.opgehaald_op ? ' · al opgehaald' : ''}
-                  </div>
-                </span>
-                <Icoon naam="chevronRechts" maat={14} className="pijl" />
-              </button>
-            ))}
-            {gefilterd.length > 200 && (
-              <div className="leeg-tekst" style={{ padding: 12 }}>
-                … en nog {gefilterd.length - 200}; gebruik de filters of het zoekveld.
+            {pagina.items.map((b) => <BronRij key={b.id} bron={b} naar={naar} />)}
+            {pagina.resterend > 0 && (
+              <div style={{ padding: 12 }}>
+                <button className="knop" onClick={() => setLimiet((n) => n + 200)}>
+                  Meer bronnen tonen ({pagina.resterend} over)
+                </button>
               </div>
             )}
           </div>
@@ -247,8 +274,8 @@ export function BronnenPagina({ naar, bronnen, blokken, naam, herlaad, geladen }
       <aside className="inspector">
         <div className="insp-titel">Zo werkt de lezer</div>
         <div className="insp-kaart" style={{ lineHeight: 1.55 }}>
-          Klik een bron open. De werkbank haalt de pagina op en toont de leesbare tekst naast je notitieveld. Je merkt een
-          bron als <b>gelezen</b> of <b>kernbron</b>; die keuze zien Victor en Anthony meteen.
+          Open een bron om tekst en notities samen te bekijken. Als een website uitlezen blokkeert, of als het een PDF is,
+          kun je het oorspronkelijke adres openen. Je keuze voor <b>gelezen</b> of <b>kernbron</b> wordt gedeeld.
         </div>
       </aside>
     </>

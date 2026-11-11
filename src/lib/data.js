@@ -1,4 +1,5 @@
 import { sb, FUNCTIES, SB_KEY } from './supabase'
+import { isBronBlokkade, isOnderhoudspagina } from './bron-check'
 
 /* ---------------------------------------------------------------- lezen */
 
@@ -156,20 +157,6 @@ export async function zetBronStatus(id, status) {
   if (error) throw error
 }
 
-export async function bewaarBronPagina(id, { pagina_titel, pagina_tekst, fout }) {
-  const { error } = await sb
-    .from('bronnen')
-    .update({
-      pagina_titel: pagina_titel ?? null,
-      pagina_tekst: pagina_tekst ?? null,
-      fout: fout ?? null,
-      opgehaald_op: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', id)
-  if (error) throw error
-}
-
 export async function voegBronToe({ url, titel, blok_id, soort = 'web', auteur }) {
   const { data, error } = await sb
     .from('bronnen')
@@ -235,7 +222,29 @@ export async function leesBron(url) {
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SB_KEY}`, apikey: SB_KEY },
     body: JSON.stringify({ url }),
   })
-  return r.json()
+  const resultaat = await r.json()
+  if (!r.ok || resultaat?.fout) {
+    return { fout: resultaat?.fout || `De bronlezer is tijdelijk niet bereikbaar (HTTP ${r.status}).` }
+  }
+  // De edgefunctie kan zelf 200 teruggeven terwijl de oorspronkelijke site
+  // een 403 of 404 terugstuurde. Een foutpagina is geen leesbare bron.
+  const bronStatus = Number(resultaat?.status)
+  if (bronStatus === 401 || bronStatus === 403 || bronStatus === 429) {
+    return { fout: `De website blokkeert deze lezer (HTTP ${bronStatus}). Open de originele bron.`, status: bronStatus }
+  }
+  if (bronStatus >= 400) {
+    return { fout: `De website kon niet geladen worden (HTTP ${bronStatus}). Open de originele bron.`, status: bronStatus }
+  }
+  if (isBronBlokkade(resultaat?.titel, resultaat?.tekst)) {
+    return { fout: 'De website toont een beveiligingscontrole in plaats van de bron. Open de originele bron.', status: bronStatus }
+  }
+  if (isOnderhoudspagina(resultaat?.tekst)) {
+    return { fout: 'De website meldt tijdelijk onderhoud. Probeer de originele bron.', status: bronStatus }
+  }
+  if (typeof resultaat?.tekst !== 'string' || !resultaat.tekst.trim()) {
+    return { fout: 'De website gaf geen leesbare tekst terug. Open de originele bron.', status: bronStatus }
+  }
+  return resultaat
 }
 
 /* ---------------------------------------------------------------- realtime */

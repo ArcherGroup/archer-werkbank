@@ -6,7 +6,8 @@ import { useRovingTabindex } from '../hooks/useRovingTabindex'
 import { Tip } from './tip'
 
 const VAST = [
-  { id: '#/', icoon: 'overzicht', titel: 'Overzicht' },
+  { id: '#/', icoon: 'overzicht', titel: 'Werkblad' },
+  { id: '#/status', icoon: 'dagdeel', titel: 'Stand van zaken' },
   { id: '#/planning', icoon: 'planning', titel: 'Planning' },
   { id: '#/bronnen', icoon: 'bronnen', titel: 'Bronnen' },
 ]

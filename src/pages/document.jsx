@@ -202,7 +202,7 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, herlaad, tik })
           <Kruimel
             naar={naar}
             delen={[
-              { tekst: 'Overzicht', naar: '#/' },
+              { tekst: 'Werkblad', naar: '#/' },
               { tekst: `${blok?.code ?? doc.blok_id} · ${blok?.titel ?? ''}`, naar: `#/blok/${doc.blok_id}` },
               { tekst: doc.titel },
             ]}

@@ -111,8 +111,8 @@ export function BlokPagina({ blokId, naar, blokken, documentenMeta, naam, herlaa
           <Kruimel
             naar={naar}
             delen={[
-              { tekst: 'Overzicht', naar: '#/' },
-              { tekst: `Dag ${blok.dag}`, naar: '#/' },
+              { tekst: 'Werkblad', naar: '#/' },
+              { tekst: `Dag ${blok.dag}`, naar: '#/status' },
               { tekst: `${blok.code} · ${blok.titel}` },
             ]}
           />

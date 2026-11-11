@@ -5,6 +5,7 @@ import * as D from './lib/data'
 import { gebruikThema } from './lib/thema'
 import { useSneltoets } from './hooks/useSneltoets'
 import { isVies, wisVies } from './lib/vies'
+import { beoordeelNavigatie } from './lib/navigatie'
 import { Palet } from './components/palet'
 import { Naamvraag } from './components/naamvraag'
 import { Topbar } from './components/topbar'
@@ -13,6 +14,7 @@ import { Meldingen, meld } from './components/meldingen'
 import { Hulp } from './components/hulp'
 import { Dialoog } from './components/dialoog'
 import { OverzichtPagina } from './pages/overzicht'
+import { WerkbladPagina } from './pages/werkblad'
 import { BlokPagina } from './pages/blok'
 import { DocPagina } from './pages/document'
 import { BronnenPagina } from './pages/bronnen'
@@ -42,8 +44,9 @@ export default function App() {
   // Navigatie met werkverlies-bewaking: staat er onbewaarde tekst open, dan
   // vragen we eerst. Bevestigen zet `goedgekeurd` en gaat dan pas echt.
   const naar = useCallback((hash) => {
-    if (!hash) return
-    if (isVies()) {
+    const actie = beoordeelNavigatie(hash, window.location.hash, isVies())
+    if (actie === 'geen') return
+    if (actie === 'vraag') {
       setWacht(hash)
       return
     }
@@ -141,8 +144,9 @@ export default function App() {
   useEffect(() => {
     const delen = route.replace(/^#\//, '').split('/')
     const w = delen[0] || ''
-    let t = 'Overzicht'
-    if (w === 'planning') t = 'Planning'
+    let t = 'Werkblad'
+    if (w === 'status') t = 'Stand van zaken'
+    else if (w === 'planning') t = 'Planning'
     else if (w === 'bronnen') t = 'Bronnen'
     else if (w === 'blok') {
       const b = blokken.find((x) => x.id === delen[1])
@@ -273,10 +277,11 @@ export default function App() {
 
 function Hoofd(props) {
   const { weergave, del } = props
+  if (weergave === 'status') return <OverzichtPagina {...props} />
   if (weergave === 'blok') return <BlokPagina {...props} blokId={del[1]} />
   if (weergave === 'doc') return <DocPagina {...props} docId={Number(del[1])} />
   if (weergave === 'bronnen') return <BronnenPagina {...props} />
   if (weergave === 'bron') return <BronPagina {...props} bronId={Number(del[1])} />
   if (weergave === 'planning') return <PlanningPagina {...props} />
-  return <OverzichtPagina {...props} />
+  return <WerkbladPagina {...props} />
 }

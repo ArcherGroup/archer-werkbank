@@ -761,6 +761,7 @@ button:disabled { cursor: default; opacity: 0.45; }
   font-weight: 600;
   letter-spacing: var(--track-13);
   color: var(--tekst-1);
+  text-decoration: none;
   transition: background var(--snel) var(--veer), border-color var(--snel) var(--veer),
     color var(--snel) var(--veer), transform 90ms var(--veer);
 }
@@ -1037,6 +1038,11 @@ button:disabled { cursor: default; opacity: 0.45; }
   background: var(--kaart);
 }
 .bron-lijst > .leeg-melding { border: 0; border-radius: 0; }
+.bron-lijst-item { display: flex; align-items: center; border-bottom: 1px solid var(--lijn); }
+.bron-lijst-item:hover { background: var(--hover); }
+.bron-lijst-item > .bron-rij { flex: 1; min-width: 0; border-bottom-color: transparent; }
+.bron-lijst-item > .bron-rij:hover { background: transparent; }
+.bron-direct { margin: 0 8px; flex-shrink: 0; }
 .pijl { color: var(--tekst-3); display: inline-flex; align-items: center; flex-shrink: 0; }
 
 /* lezer */

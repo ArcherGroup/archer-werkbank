@@ -6,6 +6,71 @@ import { Icoon } from '../components/Icoon'
 import { LegeStaat } from '../components/leegstaat'
 import { Skelet, SkeletAlinea } from '../components/skelet'
 import { meld } from '../components/meldingen'
+import { beoordeelBronCache, veiligeBronUrl, doorverwezenAdres } from '../lib/bron-check'
+
+/* De oorsprongslink blijft bereikbaar bij een fout, een PDF of een geblokkeerde
+   site. Een opgeslagen firewall- of onderhoudspagina is nooit broninhoud. */
+export function BronInhoud({ bron, opgehaald = null, fout = '', laden = false, opOpnieuw }) {
+  const cache = beoordeelBronCache(bron)
+  const toestand = opgehaald?.tekst ? { type: 'tekst', tekst: opgehaald.tekst } : cache
+  const adres = veiligeBronUrl(bron?.url)
+  const uitleg = fout || (['geblokkeerd', 'onbeschikbaar', 'fout'].includes(toestand.type) ? toestand.uitleg : '')
+
+  if (laden) {
+    return (
+      <div className="lezer-laden" role="status">
+        <div className="meta-klein" style={{ marginBottom: 12 }}>De pagina wordt opgehaald…</div>
+        <SkeletAlinea lijnen={8} />
+      </div>
+    )
+  }
+
+  if (toestand.type === 'pdf') {
+    return (
+      <div className="pl-kaart">
+        <div className="kop"><div className="t">Dit is een PDF</div></div>
+        <div className="d">Open het document op de website van de uitgever. Sommige websites laten het niet in een ander venster insluiten.</div>
+        {adres && <div className="acties"><a className="knop primair" href={adres} target="_blank" rel="noopener noreferrer">PDF openen <Icoon naam="extern" maat={12} /></a></div>}
+      </div>
+    )
+  }
+
+  if (uitleg) {
+    return (
+      <div className="foutkaart" role="alert">
+        <div className="kop"><Icoon naam="waarschuwing" maat={14} /> De bron is hier niet leesbaar</div>
+        <div>{uitleg}</div>
+        {!fout && !opgehaald && <div className="meta-klein">Dit is een eerder opgeslagen melding. Probeer opnieuw voor de huidige toestand.</div>}
+        <div className="acties">
+          {adres && <a className="knop primair" href={adres} target="_blank" rel="noopener noreferrer">Open de originele bron <Icoon naam="extern" maat={12} /></a>}
+          {opOpnieuw && <button className="knop" onClick={opOpnieuw}>Opnieuw proberen</button>}
+        </div>
+      </div>
+    )
+  }
+
+  if (toestand.type === 'tekst') {
+    return (
+      <>
+        <p className="meta-klein">{opgehaald?.tekst
+          ? 'Net opgehaald, alleen in dit venster; deze tekst is niet in de gedeelde werkbank opgeslagen.'
+          : 'Eerder opgeslagen tekst; de pagina kan intussen verouderd zijn.'}</p>
+        <div className="lezer-tekst">{toestand.tekst.slice(0, 120000)}</div>
+        {toestand.tekst.length > 120000 && <p className="meta-klein">Een deel van de tekst wordt getoond. Open de originele bron voor de volledige pagina.</p>}
+      </>
+    )
+  }
+
+  return (
+    <LegeStaat
+      icoon="bronnen"
+      titel="Nog geen leesbare tekst"
+      uitleg={adres ? 'Probeer de tekst op te halen of open het originele adres.' : 'Deze bron heeft geen geldig webadres.'}
+      acties={opOpnieuw && adres ? <button className="knop" onClick={opOpnieuw}>Tekst ophalen</button> : null}
+      compact
+    />
+  )
+}
 
 export function BronPagina({ bronId, naar, naam, herlaad, tik }) {
   const [bron, setBron] = useState(null)
@@ -13,6 +78,7 @@ export function BronPagina({ bronId, naar, naam, herlaad, tik }) {
   const [notities, setNotities] = useState([])
   const [laden, setLaden] = useState(false)
   const [fout, setFout] = useState('')
+  const [vers, setVers] = useState(null)
   const [optimistisch, setOptimistisch] = useState(null)
   const opgehaald = useRef(false)
 
@@ -36,37 +102,45 @@ export function BronPagina({ bronId, naar, naam, herlaad, tik }) {
   const haalOp = useCallback(
     async (ververs = false) => {
       if (!bron || laden) return
-      if (!ververs && bron.pagina_tekst) return
+      const adres = veiligeBronUrl(bron.url)
+      const cache = beoordeelBronCache(bron)
+      if (!adres) {
+        setFout('Deze bron heeft geen geldig webadres.')
+        return
+      }
+      // PDF's worden door de bestaande serverlezer als HTML verwerkt. Open het
+      // originele bestand, in plaats van onleesbare PDF-bytes te tonen.
+      if (cache.type === 'pdf') return
+      if (!ververs && cache.type !== 'leeg') return
       setLaden(true)
       setFout('')
       try {
-        const r = await D.leesBron(bron.url)
-        if (r.fout) {
-          setFout(r.fout)
-          await D.bewaarBronPagina(bron.id, { fout: r.fout })
+        const resultaat = await D.leesBron(adres)
+        if (resultaat.fout) {
+          setFout(resultaat.fout)
         } else {
-          await D.bewaarBronPagina(bron.id, { pagina_titel: r.titel, pagina_tekst: r.tekst })
-          meld('Bron opgehaald.')
+          setVers(resultaat)
         }
-        await herlaadBron()
-        herlaad?.()
-      } catch (e) {
-        setFout('De pagina kon niet opgehaald worden. Controleer je verbinding en probeer opnieuw.')
+        // Alleen lokaal in dit venster. Een bron openen schrijft niet langer
+        // ongemerkt een foutpagina of een tijdelijke uitlezing naar de database.
+      } catch {
+        setFout('De pagina kon niet opgehaald worden. Open de originele bron of probeer opnieuw.')
       } finally {
         setLaden(false)
       }
     },
-    [bron, laden, herlaadBron, herlaad],
+    [bron, laden],
   )
 
-  // Eerste bezoek aan een bron die nog niet opgehaald is: één keer automatisch.
+  // Haal alleen nieuwe webpagina's op. Een eerder opgeslagen fout of PDF
+  // krijgt eerst een duidelijke uitleg en de originele link.
   useEffect(() => {
-    if (!bron || opgehaald.current) return
-    if (bron.pagina_tekst || bron.fout) return
+    if (!bron || bron.id !== bronId || opgehaald.current) return
+    if (beoordeelBronCache(bron).type !== 'leeg') return
     opgehaald.current = true
     haalOp()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bron?.id])
+  }, [bron?.id, bronId])
 
   if (!bron && geladen)
     return (
@@ -100,6 +174,10 @@ export function BronPagina({ bronId, naar, naam, herlaad, tik }) {
     )
 
   const status = optimistisch ?? bron.status
+  const cacheStatus = beoordeelBronCache(bron)
+  const adres = veiligeBronUrl(bron.url)
+  const eindadres = doorverwezenAdres(adres, vers?.url)
+  const titel = vers?.titel || (cacheStatus.type === 'tekst' ? bron.pagina_titel : '') || bron.titel || bron.url
 
   const zetStatus = async (s) => {
     if (s === status) return
@@ -121,21 +199,21 @@ export function BronPagina({ bronId, naar, naam, herlaad, tik }) {
           <Kruimel
             naar={naar}
             delen={[
-              { tekst: 'Overzicht', naar: '#/' },
+              { tekst: 'Werkblad', naar: '#/' },
               { tekst: 'Bronnen', naar: '#/bronnen' },
               { tekst: (bron.titel || bron.url).slice(0, 60) },
             ]}
           />
           <div className="lezer-bron">
-            <div className="titel" title={bron.pagina_titel || bron.titel || bron.url}>
-              {bron.pagina_titel || bron.titel || bron.url}
-            </div>
+            <h1 className="titel" title={titel}>{titel}</h1>
             <div className="url">
-              <a href={bron.url} target="_blank" rel="noreferrer">
-                {bron.url}
-                <Icoon naam="extern" maat={11} />
-              </a>
+              {adres ? <a href={adres} target="_blank" rel="noopener noreferrer">{adres}<Icoon naam="extern" maat={11} /></a> : 'Ongeldig bronadres'}
             </div>
+            {eindadres && (
+              <div className="url" style={{ marginTop: 6 }}>
+                Doorverwezen naar: <a href={eindadres} target="_blank" rel="noopener noreferrer">{eindadres}<Icoon naam="extern" maat={11} /></a>
+              </div>
+            )}
             <div className="lezer-acties">
               <div className="statusgroep" role="group" aria-label="Status van deze bron">
                 {[
@@ -154,56 +232,21 @@ export function BronPagina({ bronId, naar, naam, herlaad, tik }) {
                   </button>
                 ))}
               </div>
-              <button className="knop zacht" style={{ marginLeft: 'auto' }} onClick={() => haalOp(true)} disabled={laden}>
-                <Icoon naam="vernieuwen" maat={13} className={laden ? 'draait' : undefined} />
-                {laden ? 'Ophalen…' : 'Opnieuw ophalen'}
-              </button>
+              {adres && (
+                <a className="knop primair" style={{ marginLeft: 'auto' }} href={adres} target="_blank" rel="noopener noreferrer">
+                  Origineel openen <Icoon naam="extern" maat={13} />
+                </a>
+              )}
+              {cacheStatus.type !== 'pdf' && (
+                <button className="knop zacht" onClick={() => haalOp(true)} disabled={laden || !adres}>
+                  <Icoon naam="vernieuwen" maat={13} className={laden ? 'draait' : undefined} />
+                  {laden ? 'Ophalen…' : 'Tekst opnieuw ophalen'}
+                </button>
+              )}
             </div>
           </div>
 
-          {laden && (
-            <div className="lezer-laden">
-              <div className="meta-klein" style={{ marginBottom: 12 }}>
-                De pagina wordt opgehaald…
-              </div>
-              <SkeletAlinea lijnen={8} />
-            </div>
-          )}
-
-          {fout && !laden && (
-            <div className="foutkaart" role="alert">
-              <div className="kop">
-                <Icoon naam="waarschuwing" maat={14} />
-                Ophalen mislukte
-              </div>
-              <div>{fout}</div>
-              <div className="acties">
-                <button className="knop" onClick={() => haalOp(true)}>
-                  Opnieuw proberen
-                </button>
-                <a className="knop zacht" href={bron.url} target="_blank" rel="noreferrer">
-                  Open de pagina zelf
-                  <Icoon naam="extern" maat={12} />
-                </a>
-              </div>
-            </div>
-          )}
-
-          {!laden && bron.pagina_tekst && <div className="lezer-tekst">{bron.pagina_tekst.slice(0, 120000)}</div>}
-
-          {!laden && !bron.pagina_tekst && !fout && (
-            <LegeStaat
-              icoon="bronnen"
-              titel="Nog niets opgehaald"
-              uitleg="Haal de pagina op om de leesbare tekst hier naast je notities te krijgen."
-              acties={
-                <button className="knop primair" onClick={() => haalOp(true)}>
-                  Nu ophalen
-                </button>
-              }
-              compact
-            />
-          )}
+          <BronInhoud bron={bron} opgehaald={vers} fout={fout} laden={laden} opOpnieuw={() => haalOp(true)} />
         </div>
       </main>
 
@@ -228,7 +271,7 @@ export function BronPagina({ bronId, naar, naam, herlaad, tik }) {
           </div>
           {bron.opgehaald_op && (
             <div className="insp-rij">
-              <span className="k">Opgehaald</span>
+              <span className="k">Eerder opgeslagen</span>
               <span className="v cijfers">{D.datumKort(bron.opgehaald_op)}</span>
             </div>
           )}

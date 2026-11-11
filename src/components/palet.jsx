@@ -10,7 +10,8 @@ import { useFocusTrap } from '../hooks/useFocusTrap'
    aria-activedescendant. Enter opent, Escape en klik-buiten sluiten. */
 
 const VASTE_PLEKKEN = [
-  { icoon: 'overzicht', titel: 'Overzicht', sub: 'de hele editie in één beeld', naar: '#/' },
+  { icoon: 'overzicht', titel: 'Werkblad', sub: 'rode draad en vergelijking tussen edities', naar: '#/' },
+  { icoon: 'dagdeel', titel: 'Stand van zaken', sub: 'voortgang van de editie', naar: '#/status' },
   { icoon: 'bronnen', titel: 'Bronnen', sub: 'alle bronnen, filterbaar', naar: '#/bronnen' },
   { icoon: 'planning', titel: 'Planning', sub: 'beslissingen, validaties, voorstellen', naar: '#/planning' },
 ]

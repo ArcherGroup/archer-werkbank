@@ -1,0 +1,64 @@
+/* Werkblad: inhoud en keuzes eerst, details in de brondocumenten. */
+.wb-binnen { max-width: 1120px; }
+.wb-kop { margin: 0 0 20px; }
+.wb-kop h1 { margin: 0 0 6px; font-size: var(--tekst-24); letter-spacing: var(--track-24); }
+.wb-kop p { margin: 0; color: var(--tekst-2); line-height: 1.55; }
+.wb-eyebrow { color: var(--tekst-3); font-size: var(--tekst-11); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.wb-stam { background: var(--kaart); border: 1px solid var(--lijn); border-radius: var(--straal); padding: 20px; }
+.wb-stam h2 { font-size: var(--tekst-17); margin: 5px 0 8px; }
+.wb-stam blockquote { margin: 0 0 14px; font-size: var(--tekst-16); font-weight: 600; line-height: 1.45; }
+.wb-lagen-details { margin: 0 0 8px; }
+.wb-lagen-details summary { cursor: pointer; color: var(--accent-ink); font-size: var(--tekst-12); font-weight: 600; }
+.wb-lagen { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.wb-laag { background: var(--vul-sterk); border-radius: 8px; padding: 11px; min-width: 0; }
+.wb-laag strong { display: block; font-size: var(--tekst-12); margin-bottom: 5px; }
+.wb-laag span { display: block; color: var(--tekst-2); font-size: var(--tekst-12); line-height: 1.4; }
+.wb-stam-voet { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.wb-beslissing { border: 1px solid var(--accent-ring); background: var(--accent-zacht); border-radius: 8px; padding: 12px 14px; margin-top: 12px; display: flex; gap: 12px; align-items: center; }
+.wb-beslissing .wb-beslissing-tekst { flex: 1; min-width: 0; }
+.wb-beslissing strong { display: block; }
+.wb-beslissing p { color: var(--tekst-2); margin: 4px 0 0; line-height: 1.45; }
+.wb-sectie-kop { margin: 26px 0 12px; }
+.wb-sectie-kop h2 { margin: 0 0 5px; font-size: var(--tekst-19); letter-spacing: var(--track-19); }
+.wb-sectie-kop p { margin: 0; color: var(--tekst-2); line-height: 1.5; }
+.wb-tabs { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
+.wb-tab { border: 1px solid var(--lijn-stevig); border-radius: 8px; padding: 8px 11px; background: var(--kaart); color: var(--tekst-1); text-align: left; }
+.wb-tab[aria-pressed='true'] { border-color: var(--accent); color: var(--accent-ink); background: var(--accent-zacht); font-weight: 600; }
+.wb-tab:hover { background: var(--hover); }
+.wb-vergelijking-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
+.wb-vergelijk-kaart, .wb-controle, .wb-feedback { background: var(--kaart); border: 1px solid var(--lijn); border-radius: var(--straal); padding: 18px; min-width: 0; }
+.wb-vergelijk-kaart h3, .wb-controle h3, .wb-feedback h3 { font-size: var(--tekst-16); margin: 6px 0 10px; }
+.wb-vergelijk-kaart h4 { margin: 18px 0 8px; font-size: var(--tekst-13); }
+.wb-vergelijk-kaart p, .wb-controle p { line-height: 1.55; margin: 0 0 9px; white-space: pre-wrap; }
+.wb-vergelijk-kaart ul, .wb-controle ul, .wb-details ul { margin: 8px 0 12px; padding-left: 19px; }
+.wb-vergelijk-kaart li, .wb-controle li, .wb-details li { line-height: 1.5; padding-bottom: 7px; }
+.wb-ontbreekt, .wb-bronnoot { color: var(--tekst-2); font-size: var(--tekst-12); }
+.wb-bronlinks { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px -8px 0; }
+.wb-controle { margin-top: 12px; }
+.wb-details, .wb-meer { color: var(--tekst-2); margin-top: 8px; }
+.wb-details summary, .wb-meer summary { cursor: pointer; color: var(--accent-ink); font-weight: 600; }
+.wb-details { padding: 14px 18px; border: 1px solid var(--lijn); border-radius: var(--straal); background: var(--kaart); }
+.wb-bronnoot { margin: 12px 0 0; line-height: 1.45; }
+.wb-feedback { margin-top: 22px; }
+.wb-feedback p { color: var(--tekst-2); line-height: 1.45; }
+.wb-feedback textarea { width: 100%; min-height: 90px; resize: vertical; padding: 10px 12px; border: 1px solid var(--lijn-stevig); border-radius: 8px; background: var(--invoer); color: var(--tekst-1); }
+.wb-feedback-acties { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+.wb-feedback-fout { color: var(--rood); margin: 8px 0; }
+.wb-feedback-item { border-top: 1px solid var(--lijn); margin-top: 12px; padding-top: 12px; white-space: pre-wrap; line-height: 1.45; }
+.wb-feedback-item small { display: block; color: var(--tekst-2); margin-bottom: 4px; }
+.wb-links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.wb-onderzoek { background: var(--kaart); border: 1px solid var(--lijn); border-radius: var(--straal); padding: 18px; margin-top: 22px; }
+.wb-onderzoek h2 { font-size: var(--tekst-16); margin: 6px 0 10px; }
+.wb-onderzoek p, .wb-onderzoek li { color: var(--tekst-2); line-height: 1.5; }
+.wb-onderzoek label:not(.wb-onderzoek-akkoord) { display: block; font-weight: 600; margin: 14px 0 6px; }
+.wb-onderzoek textarea { width: 100%; min-height: 90px; resize: vertical; padding: 10px 12px; border: 1px solid var(--lijn-stevig); border-radius: 8px; background: var(--invoer); color: var(--tekst-1); }
+.wb-onderzoek-akkoord { display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; color: var(--tekst-2); }
+.wb-onderzoek-akkoord input { margin-top: 3px; flex: none; }
+.wb-onderzoek-status { font-weight: 600; }
+.wb-onderzoek-resultaat { border-top: 1px solid var(--lijn); margin-top: 16px; padding-top: 12px; }
+.wb-onderzoek-bron { border: 1px solid var(--lijn); border-radius: 8px; padding: 12px; margin: 12px 0; }
+.wb-onderzoek-bron a, .wb-onderzoek summary { color: var(--accent-ink); font-weight: 600; overflow-wrap: anywhere; }
+.wb-onderzoek-bron blockquote { margin: 10px 0; border-left: 2px solid var(--accent-ring); padding-left: 10px; line-height: 1.5; }
+.wb-onderzoek summary { cursor: pointer; }
+@media (max-width: 1050px) { .wb-lagen { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 800px) { .wb-vergelijking-grid { grid-template-columns: 1fr; } .wb-stam, .wb-vergelijk-kaart, .wb-controle, .wb-feedback { padding: 14px; } }
