@@ -16,6 +16,8 @@ const RIJEN = [
   { wat: 'Eerste of laatste in een lijst', toets: null, los: 'Home / End' },
   { wat: 'Stuk bewaren (in de bewerker)', toets: 'S' },
   { wat: 'Notitie bewaren', toets: null, los: `${MOD}⏎` },
+  { wat: 'Comments aan of uit', toets: null, los: 'C' },
+  { wat: 'Walkthrough: vorige en volgende', toets: null, los: '← →' },
 ]
 
 export function Hulp({ open, opSluiten }) {

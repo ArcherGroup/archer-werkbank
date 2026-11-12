@@ -54,6 +54,36 @@ test('het werkblad kiest de echte brief en verwart de sprekersbriefing niet met 
   assert.equal(werkblad.vindBrief([...documenten, { id: 20, blok_id: '2.1', soort: 'brief', titel: 'brief' }], '2.1'), null)
 })
 
+test('de kernboodschap komt letterlijk uit de brief en niet uit een andere sectie', async () => {
+  const werkblad = await laad()
+  assert.equal(typeof werkblad.kernboodschapVoorKeten, 'function')
+  const brief = '## Kernboodschap\n\n**Eerst de functie**, dan [het voertuig](#/doc/7).\n\nEen tweede alinea.\n\n## Te controleren\nNiet als stelling gebruiken.'
+  assert.equal(werkblad.kernboodschapVoorKeten(brief), 'Eerst de functie, dan het voertuig.')
+  assert.equal(werkblad.kernboodschapVoorKeten('## Ander hoofdstuk\nNiet verzinnen.'), null)
+  assert.equal(werkblad.kernboodschapVoorKeten(null), null)
+})
+
+test('een stelling blijft gekoppeld aan de actuele brief van het gekozen dagdeel', async () => {
+  const werkblad = await laad()
+  assert.equal(typeof werkblad.stellingVoorDagdeel, 'function')
+  const meta = { id: 9, blok_id: '1.3', soort: 'brief', titel: 'brief' }
+  const doc = { ...meta, inhoud: '## Kernboodschap\n\nEerst de functie, dan het voertuig.' }
+  assert.deepEqual(werkblad.stellingVoorDagdeel(doc, meta, '1.3'), { tekst: 'Eerst de functie, dan het voertuig.', bron: { id: 9 } })
+  assert.equal(werkblad.stellingVoorDagdeel(doc, meta, '4.4'), null, 'geen oude tekst bij een ander dagdeel')
+  assert.equal(werkblad.stellingVoorDagdeel(doc, { ...meta, id: 10 }, '1.3'), null, 'geen oude tekst tijdens laden van een nieuwe brief')
+  assert.equal(werkblad.stellingVoorDagdeel({ ...doc, inhoud: 'Geen kernboodschap.' }, meta, '1.3'), null)
+})
+
+test('het doel komt uit de doelparagraaf van de juiste brief', async () => {
+  const werkblad = await laad()
+  assert.equal(typeof werkblad.doelVoorDagdeel, 'function')
+  const meta = { id: 9, blok_id: '1.3', soort: 'brief', titel: 'brief' }
+  const doc = { ...meta, inhoud: '## Doel\n\nDeelnemers maken een plan.\n\n## Kernboodschap\nNiet gebruiken als doel.' }
+  assert.deepEqual(werkblad.doelVoorDagdeel(doc, meta, '1.3'), { tekst: 'Deelnemers maken een plan.', bron: { id: 9 } })
+  assert.equal(werkblad.doelVoorDagdeel(doc, meta, '4.4'), null)
+  assert.equal(werkblad.doelVoorDagdeel({ ...doc, inhoud: '## Kernboodschap\nAndere tekst.' }, meta, '1.3'), null)
+})
+
 test('de vergelijking haalt alleen de aanwezige onderdelen uit het werkdocument', async () => {
   const werkblad = await laad()
   assert.equal(typeof werkblad.maakVergelijking, 'function')

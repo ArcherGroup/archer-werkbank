@@ -1,0 +1,119 @@
+/* De balk met grote tags boven het werkboek. Hij plakt bovenaan het leesvlak,
+   zodat je altijd kunt springen zonder naar boven te scrollen. */
+
+.wb-balk {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 8px 0 9px;
+  background: color-mix(in srgb, var(--kaart) 92%, transparent);
+  backdrop-filter: saturate(1.4) blur(10px);
+  border-bottom: 1px solid var(--lijn);
+}
+
+.wb-pijlen { display: flex; gap: 4px; flex: none; }
+.wb-pijl {
+  width: 24px; height: 24px;
+  display: grid; place-items: center;
+  border: 1px solid var(--lijn);
+  border-radius: 7px;
+  background: var(--knop);
+  color: var(--tekst-2);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.wb-pijl:hover:not(:disabled) { background: var(--knop-hover); color: var(--tekst-1); }
+.wb-pijl:disabled { opacity: .35; cursor: default; }
+
+.wb-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 2px 1px;
+  list-style: none;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+.wb-tags::-webkit-scrollbar { display: none; }
+.wb-tags li { flex: none; scroll-snap-align: center; }
+
+.wb-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 26px;
+  padding: 0 9px 0 6px;
+  border: 1px solid var(--lijn);
+  border-radius: 8px;
+  background: var(--knop);
+  color: var(--tekst-2);
+  font: inherit;
+  font-size: var(--tekst-11);
+  font-weight: 600;
+  white-space: nowrap;
+  max-width: 22ch;
+  cursor: pointer;
+  transition: background 120ms var(--veer), border-color 120ms var(--veer), color 120ms var(--veer);
+}
+.wb-tag:hover { background: var(--knop-hover); color: var(--tekst-1); }
+.wb-tag.aan {
+  background: var(--accent-zacht);
+  border-color: var(--accent-ring);
+  color: var(--accent-ink);
+}
+.wb-tag.diep { height: 23px; font-size: 10px; opacity: .92; }
+.wb-nr {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 3px;
+  border-radius: 5px;
+  background: var(--vul-sterk);
+  color: var(--tekst-2);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+.wb-tag.aan .wb-nr { background: var(--accent-vlak); color: #fff; }
+.wb-titel { overflow: hidden; text-overflow: ellipsis; }
+
+.wb-rechts { display: flex; align-items: center; gap: 8px; flex: none; margin-left: auto; }
+.wb-klik {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 9px;
+  border: 1px dashed var(--lijn-stevig);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--tekst-3);
+  font: inherit;
+  font-size: var(--tekst-11);
+  cursor: pointer;
+}
+.wb-klik:hover { color: var(--tekst-1); border-color: var(--accent-ring); }
+.wb-klik-label { color: var(--tekst-3); flex: none; }
+.wb-klik-wie { color: var(--tekst-2); font-weight: 650; flex: none; }
+
+/* Binnen de leeskolom blijven, ook op een smal scherm. */
+.wb-balk { width: 100%; max-width: 100%; }
+.wb-rechts .knop { height: 26px; padding: 0 10px; font-size: var(--tekst-11); }
+
+@media (max-width: 900px) {
+  .wb-start { padding: 0 8px; }
+}
+@media (max-width: 720px) {
+  .wb-balk { gap: 5px; }
+  .wb-tag { max-width: 15ch; }
+  .wb-klik { display: none; }
+}

@@ -60,6 +60,17 @@ export async function laadAlleNotities() {
   return data ?? []
 }
 
+// Voor de comments-laag: alle notities, niet alleen de recentste dertig.
+export async function laadNotitiesAlles() {
+  const { data, error } = await sb
+    .from('notities')
+    .select('*')
+    .order('created_at', { ascending: true })
+    .limit(1000)
+  if (error) throw error
+  return data ?? []
+}
+
 export async function laadHistoriek(documentId) {
   const { data, error } = await sb
     .from('documenten_historiek')
@@ -105,29 +116,35 @@ export async function verwijderNotitie(id) {
   if (error) throw error
 }
 
-export async function bewaarDocument(doc, nieuweInhoud, wie) {
-  // oude versie naar de historiek, dan het document zelf
-  const { error: hfout } = await sb.from('documenten_historiek').insert({
-    document_id: doc.id,
-    versie: doc.versie,
-    inhoud: doc.inhoud,
+export async function bewaarDocumentVeilig(doc, nieuweInhoud, wie, client = sb) {
+  if (!doc?.id || typeof nieuweInhoud !== 'string') throw new Error('Document of inhoud ontbreekt.')
+  // Eerst controleren vóór het toevoegen van historie; vervolgens conditioneel
+  // bijwerken om een wijziging tussen die controle en het bewaren op te vangen.
+  const { data: huidig, error: leesFout } = await client.from('documenten').select('id,versie,inhoud,updated_at').eq('id', doc.id).single()
+  if (leesFout) throw leesFout
+  if (!huidig || huidig.versie !== doc.versie || (huidig.inhoud ?? '') !== (doc.inhoud ?? '') || (huidig.updated_at ?? null) !== (doc.updated_at ?? null)) {
+    throw new Error('Dit document is elders gewijzigd. Je tekst is niet opgeslagen; kopieer of download je werk en herlaad eerst.')
+  }
+  const { error: historieFout } = await client.from('documenten_historiek').insert({
+    document_id: doc.id, versie: doc.versie, inhoud: doc.inhoud,
     bewerkt_door: doc.bewerkt_door ?? doc.schrijver ?? null,
   })
-  if (hfout) throw hfout
-  const { data, error } = await sb
-    .from('documenten')
-    .update({
-      inhoud: nieuweInhoud,
-      bytes: new TextEncoder().encode(nieuweInhoud).length,
-      versie: (doc.versie ?? 1) + 1,
-      bewerkt_door: wie,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', doc.id)
-    .select()
-    .single()
+  if (historieFout) throw historieFout
+  let query = client.from('documenten').update({
+    inhoud: nieuweInhoud, bytes: new TextEncoder().encode(nieuweInhoud).length,
+    versie: (doc.versie ?? 1) + 1, bewerkt_door: wie, updated_at: new Date().toISOString(),
+  }).eq('id', doc.id)
+  query = doc.versie == null ? query.is('versie', null) : query.eq('versie', doc.versie)
+  query = doc.updated_at == null ? query.is('updated_at', null) : query.eq('updated_at', doc.updated_at)
+  const { data, error } = await query.select().maybeSingle()
   if (error) throw error
+  if (!data) throw new Error('Dit document is intussen gewijzigd. Je tekst is niet opgeslagen; herlaad eerst. Er kan een extra momentopname in de historiek staan.')
+  if (String(data.id) !== String(doc.id) || data.inhoud !== nieuweInhoud) throw new Error('De teruggelezen inhoud verschilt. Controleer de actuele stand; je tekst is nog beschikbaar.')
   return data
+}
+
+export async function bewaarDocument(doc, nieuweInhoud, wie) {
+  return bewaarDocumentVeilig(doc, nieuweInhoud, wie)
 }
 
 export async function zetDocumentVersie(docId, inhoud, versie, wie, bronVersie) {
@@ -166,6 +183,25 @@ export async function voegBronToe({ url, titel, blok_id, soort = 'web', auteur }
   if (error) throw error
   if (auteur) {
     await voegNotitieToe('bron', data.id, `Bron toegevoegd via de werkbank.`, auteur)
+  }
+  return data
+}
+
+export async function legBeslissingVast(beslissing, besluit, client = sb) {
+  if (!beslissing?.id || beslissing.status !== 'open' || !String(besluit ?? '').trim()) {
+    throw new Error('Een open beslissing en een ingevuld besluit zijn vereist.')
+  }
+  let query = client.from('beslissingen')
+    .update({ status: 'beslist', besluit: besluit.trim(), updated_at: new Date().toISOString() })
+    .eq('id', beslissing.id).eq('status', 'open')
+  query = beslissing.updated_at == null
+    ? query.is('updated_at', null)
+    : query.eq('updated_at', beslissing.updated_at)
+  const { data, error } = await query.select('id,status,besluit,updated_at').maybeSingle()
+  if (error) throw error
+  if (!data) throw new Error('De beslissing is intussen gewijzigd. Herlaad en beoordeel opnieuw.')
+  if (String(data.id) !== String(beslissing.id) || data.status !== 'beslist' || data.besluit !== besluit.trim()) {
+    throw new Error('De teruggelezen beslissing verschilt van de keuze. Controleer de actuele stand.')
   }
   return data
 }
@@ -296,3 +332,42 @@ export function datumKort(iso) {
 
 /* de dagen van de editie, voor de zijbalk en het overzicht */
 export const DAG_NAMEN = { 0: 'Dag 0 · Voorbereiding', 1: 'Dag 1 · Anthony', 2: 'Dag 2 · Vastgoed', 3: 'Dag 3 · Fiscaliteit', 4: 'Dag 4 · Afronding' }
+
+/* ---------------------------------------------------------------- klikplekken */
+
+/* Waar klikte de vorige lezer? Alleen het laatste spoor per stuk, geen reeks.
+   De tabel bestaat uit één regel per klik; hij groeit traag en wordt nooit
+   gebruikt om iemand te volgen, alleen om de plek terug te vinden. */
+export async function laadLaatsteKlik(documentId) {
+  const { data, error } = await sb
+    .from('klikplekken')
+    .select('document_id,gebruiker,sectie,fragment,created_at')
+    .eq('document_id', String(documentId))
+    .order('created_at', { ascending: false })
+    .limit(1)
+  if (error) throw error
+  return data?.[0] ?? null
+}
+
+export async function bewaarKlik(rij) {
+  const { error } = await sb.from('klikplekken').insert(rij)
+  if (error) throw error
+}
+
+/* ---------------------------------------------------------------- actualiteit */
+
+/* Wat de wachters vonden. Signalen zijn voorstellen: de mens bevestigt of legt weg. */
+export async function laadActualiteit() {
+  const { data, error } = await sb
+    .from('actualiteit')
+    .select('id,domein,bron_naam,bron_url,titel,zin,getal,eenheid,bron_datum,status,agent,gevonden_op')
+    .order('gevonden_op', { ascending: false })
+    .limit(400)
+  if (error) throw error
+  return data ?? []
+}
+
+export async function zetSignaalStatus(id, status) {
+  const { error } = await sb.from('actualiteit').update({ status }).eq('id', id)
+  if (error) throw error
+}

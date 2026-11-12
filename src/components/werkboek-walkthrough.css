@@ -1,0 +1,174 @@
+/* Walkthrough met context: links het stuk, rechts de comment. */
+
+.ww-scherm {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  padding: 22px clamp(14px, 3vw, 40px) 0;
+  background: color-mix(in srgb, var(--achtergrond) 92%, transparent);
+  backdrop-filter: blur(18px) saturate(1.2);
+}
+
+.ww-kop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--lijn);
+}
+.ww-oog { font-size: var(--tekst-12); font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--tekst-3); }
+.ww-stand { font-variant-numeric: tabular-nums; color: var(--tekst-2); font-size: var(--tekst-12); }
+.ww-scope { color: var(--tekst-3); font-size: var(--tekst-12); }
+.ww-sluit {
+  margin-left: auto; display: inline-grid; place-items: center;
+  width: 32px; height: 32px; border: 1px solid var(--lijn); border-radius: 8px;
+  background: var(--knop); color: var(--tekst-2); cursor: pointer;
+}
+.ww-sluit:hover { background: var(--knop-hover); color: var(--tekst-1); }
+
+.ww-vlak {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(340px, .9fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: clamp(14px, 2vw, 26px);
+  min-height: 0;
+  padding: 18px 0;
+}
+@media (max-width: 900px) {
+  .ww-vlak { grid-template-columns: 1fr; overflow-y: auto; }
+  /* Op één kolom mag het leesvlak niet dichtklappen: dan zie je de tekst niet. */
+  .ww-context { height: auto; }
+  .ww-tekst { max-height: 42vh; min-height: 20vh; mask-image: none; -webkit-mask-image: none; }
+  .ww-comment { overflow: visible; }
+}
+
+.ww-context {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 20px 22px;
+  border: 1px solid var(--lijn);
+  border-radius: 16px;
+  background: var(--kaart);
+  box-shadow: inset 0 1px 0 var(--glans);
+}
+.ww-context-kop { display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px; }
+.ww-context-label { font-size: var(--tekst-11); letter-spacing: .08em; text-transform: uppercase; color: var(--tekst-3); font-weight: 650; }
+.ww-context-sectie { color: var(--tekst-2); font-size: var(--tekst-12); font-weight: 600; }
+.ww-tekst { overflow-y: auto; flex: 1 1 auto; padding-right: 6px; }
+.ww-tekst p { margin: 0 0 14px; font-size: 15.5px; line-height: 1.62; color: var(--tekst-2); }
+.ww-tekst .ww-hier { color: var(--tekst-1); }
+.ww-tekst .ww-ver { opacity: .55; }
+.ww-anker {
+  background: color-mix(in srgb, var(--accent-vlak) 20%, transparent);
+  color: var(--tekst-1);
+  border-bottom: 2px solid var(--accent-vlak);
+  border-radius: 3px;
+  padding: 1px 2px;
+}
+.ww-geen { color: var(--tekst-3); font-size: var(--tekst-13); }
+.ww-spring { align-self: flex-start; margin-top: 14px; }
+
+.ww-comment {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 22px;
+  border: 1px solid var(--lijn-stevig);
+  border-radius: 16px;
+  background: var(--kaart);
+  box-shadow: 0 24px 60px rgb(0 0 0 / .26), inset 0 1px 0 var(--glans);
+}
+.ww-wie-rij { display: flex; align-items: center; gap: 9px; }
+.ww-wie { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 11px; font-weight: 700; flex: none; }
+.ww-wie-rij b { font-size: var(--tekst-13); }
+.ww-datum { display: block; color: var(--tekst-3); font-size: var(--tekst-11); }
+.ww-citaat-kort { margin-left: auto; color: var(--tekst-3); font-size: var(--tekst-11); max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ww-tekst-comment { margin: 0; font-size: 16px; line-height: 1.55; color: var(--tekst-1); }
+
+.ww-draad { display: flex; flex-direction: column; gap: 8px; }
+.ww-bubbel { max-width: 88%; padding: 8px 12px; border-radius: 14px 14px 14px 4px; background: var(--vul); }
+.ww-bubbel.eigen { align-self: flex-end; border-radius: 14px 14px 4px 14px; background: var(--accent-zacht); }
+.ww-bubbel-wie { display: block; font-size: 10px; color: var(--tekst-3); margin-bottom: 2px; }
+.ww-bubbel p { margin: 0; font-size: var(--tekst-13); line-height: 1.45; }
+
+.ww-acties { display: flex; align-items: center; gap: 8px; margin-top: auto; }
+.ww-pijlen { display: flex; gap: 6px; margin-left: auto; }
+.ww-pijl {
+  width: 30px; height: 30px; display: grid; place-items: center;
+  border: 1px solid var(--lijn); border-radius: 8px; background: var(--knop);
+  color: var(--tekst-2); cursor: pointer;
+}
+.ww-pijl:disabled { opacity: .35; cursor: default; }
+
+.ww-antwoord {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 5px 5px 12px;
+  border: 1px solid var(--lijn-stevig);
+  border-radius: 999px;
+  background: var(--knop);
+}
+.ww-antwoord input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--tekst-1); font: inherit; font-size: var(--tekst-13); outline: none; }
+.ww-stuur { width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--accent-vlak); color: #fff; cursor: pointer; }
+.ww-stuur:disabled { opacity: .4; cursor: default; }
+.ww-fout { margin: 0; color: var(--rood, #c0392b); font-size: var(--tekst-12); }
+
+.ww-leeg { margin: auto; max-width: 460px; text-align: center; }
+.ww-leeg h2 { margin: 0 0 6px; font-size: 20px; }
+.ww-leeg p { color: var(--tekst-2); margin: 0 0 14px; }
+
+.ww-voet {
+  display: flex; gap: 18px; justify-content: center;
+  padding: 10px 0 14px;
+  border-top: 1px solid var(--lijn);
+  color: var(--tekst-3);
+  font-size: var(--tekst-11);
+}
+@media (max-width: 720px) { .ww-voet { display: none; } }
+/* De context scrolt; een zachte rand maakt duidelijk dat er meer staat. */
+.ww-tekst {
+  mask-image: linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 16px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 16px), transparent 100%);
+}
+
+.ww-hint { color: var(--tekst-3); font-size: var(--tekst-11); }
+.ww-comment .thread { border-top: 0; padding-top: 0; }
+.ww-comment .thread + .ww-acties { margin-top: auto; padding-top: 10px; }
+
+/* De comments zelf, klikbaar: je wisselt van gesprek zonder te bladeren. */
+.ww-lijst {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 10px 0 0;
+}
+.ww-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 34ch;
+  padding: 5px 10px 5px 6px;
+  border: 1px solid var(--lijn);
+  border-radius: 999px;
+  background: var(--knop);
+  color: var(--tekst-2);
+  font: inherit;
+  font-size: var(--tekst-11);
+  cursor: pointer;
+}
+.ww-chip:hover { background: var(--knop-hover); color: var(--tekst-1); }
+.ww-chip.aan { border-color: var(--accent-ring); background: var(--accent-zacht); color: var(--accent-ink); }
+.ww-chip-nr {
+  display: inline-grid; place-items: center;
+  min-width: 18px; height: 18px; border-radius: 50%;
+  background: var(--vul-sterk); color: var(--tekst-2);
+  font-size: 10px; font-variant-numeric: tabular-nums;
+}
+.ww-chip.aan .ww-chip-nr { background: var(--accent-vlak); color: #fff; }
+.ww-chip-tekst { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ww-chip-tel { color: var(--tekst-3); font-variant-numeric: tabular-nums; }

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import * as D from '../lib/data'
-import { Kruimel } from '../components/basis'
+
 import { Notities } from '../components/notities'
 import { Icoon } from '../components/Icoon'
 import { LegeStaat } from '../components/leegstaat'
@@ -196,14 +196,6 @@ export function BronPagina({ bronId, naar, naam, herlaad, tik }) {
     <>
       <main className="hoofd">
         <div className="hoofd-binnen">
-          <Kruimel
-            naar={naar}
-            delen={[
-              { tekst: 'Werkblad', naar: '#/' },
-              { tekst: 'Bronnen', naar: '#/bronnen' },
-              { tekst: (bron.titel || bron.url).slice(0, 60) },
-            ]}
-          />
           <div className="lezer-bron">
             <h1 className="titel" title={titel}>{titel}</h1>
             <div className="url">

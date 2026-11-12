@@ -5,7 +5,7 @@ import {
   History, Download, ExternalLink, RefreshCw, Star, ChevronRight, X, Check,
   TriangleAlert, Info, Moon, Sun, SunMoon,
   Circle, CircleDashed, CircleDot, CircleCheck, MessageSquare,
-  ArrowUp, CornerDownLeft, LoaderCircle, Trash2, Undo2, Filter, ChevronDown,
+  ArrowUp, CornerDownLeft, LoaderCircle, Trash2, Undo2, Filter, ChevronDown, Menu, MousePointer2,
 } from 'lucide-react'
 
 // Eén optische lijndikte (~1,3 px) over alle maten. Lucide tekent op een 24-raster:
@@ -13,6 +13,8 @@ import {
 const STROKE = { 12: 2.5, 14: 2.25, 16: 2, 18: 1.75, 20: 1.5 }
 
 export const ICONEN = {
+  menu: Menu,
+  cursor: MousePointer2,
   overzicht: LayoutDashboard,
   planning: Compass,
   bronnen: Link,

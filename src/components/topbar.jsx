@@ -7,19 +7,35 @@ import { MOD, ariaShortcut } from '../lib/keys'
 const THEMA_LABEL = { auto: 'volgt het systeem', licht: 'licht', donker: 'donker' }
 const THEMA_VOLGEND = { auto: 'licht', licht: 'donker', donker: 'auto' }
 
-export function Topbar({ naam, online, thema, opThema, opZoeken, opHulp, opWissel }) {
+export function Topbar({ naam, online, thema, opThema, opZoeken, opHulp, opWissel, menuOpen = false, opMenu, commentsAan = false, commentsAantal = 0, opComments }) {
   const volgend = THEMA_VOLGEND[thema] ?? 'auto'
   const icoon = thema === 'auto' ? 'autoThema' : thema === 'licht' ? 'zon' : 'maan'
   const themaLabel = `Thema: ${THEMA_LABEL[thema] ?? 'volgt het systeem'} — klik voor ${THEMA_LABEL[volgend]}`
 
   return (
     <header className="topbar">
+      <button type="button" className="mobiel-menu-knop" onClick={opMenu} aria-controls="hoofd-navigatie" aria-expanded={menuOpen} aria-label={menuOpen ? 'Navigatie sluiten' : 'Navigatie openen'}>
+        <Icoon naam={menuOpen ? 'sluiten' : 'menu'} maat={20} />
+      </button>
       <div className="merk">
         <span className="blokje" aria-hidden="true">
           A
         </span>
         <span className="merk-tekst">Werkbank · Masterclass februari 2027</span>
       </div>
+
+      <button
+        type="button"
+        className={`comments-knop${commentsAan ? ' aan' : ''}`}
+        onClick={opComments}
+        aria-pressed={commentsAan}
+        aria-label={`Comments ${commentsAan ? 'uitschakelen' : 'inschakelen'}`}
+        title="Comments aan of uit (C)"
+      >
+        <Icoon naam="inhoud" maat={15} />
+        <span className="comments-knop-tekst">Comments</span>
+        {commentsAantal > 0 && <span className="comments-knop-tel">{commentsAantal}</span>}
+      </button>
 
       <button className="zoekknop" onClick={opZoeken} aria-keyshortcuts={ariaShortcut('k')} aria-label="Zoeken en springen">
         <Icoon naam="zoeken" maat={14} />

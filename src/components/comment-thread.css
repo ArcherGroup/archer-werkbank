@@ -1,0 +1,86 @@
+/* Eén comment met zijn gesprek, in het paneel en in de walkthrough. */
+
+.thread {
+  padding: 12px 0 10px;
+  border-top: 1px solid var(--lijn);
+}
+.thread:first-of-type { border-top: 0; }
+.thread.dicht { opacity: .72; }
+
+.thread-kop { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.thread-wie { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 10px; font-weight: 700; flex: none; }
+.thread-kop b { font-size: var(--tekst-13); }
+.thread-datum { color: var(--tekst-3); font-size: var(--tekst-11); }
+.thread-status {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: .02em;
+}
+.thread-status.opgelost { background: var(--groen-zacht, #dff3e4); color: var(--groen-ink, #1e6b39); }
+.thread-status.afgewezen { background: var(--vul-sterk); color: var(--tekst-2); }
+
+.thread-citaat {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin: 8px 0 6px;
+  padding: 2px 0 2px 10px;
+  border: 0;
+  border-left: 2px solid var(--accent-ring);
+  background: transparent;
+  color: var(--tekst-2);
+  font: inherit;
+  font-size: var(--tekst-12);
+  line-height: 1.45;
+}
+.thread-toon { cursor: pointer; }
+.thread-toon:hover { color: var(--accent); text-decoration: underline; }
+
+.thread-tekst { margin: 6px 0 8px; font-size: var(--tekst-13); line-height: 1.5; color: var(--tekst-1); }
+
+.thread-gesprek { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
+.thread-bubbel { max-width: 90%; padding: 7px 11px; border-radius: 12px 12px 12px 4px; background: var(--vul); }
+.thread-bubbel.eigen { align-self: flex-end; border-radius: 12px 12px 4px 12px; background: var(--accent-zacht); }
+.thread-bubbel-wie { display: block; font-size: 10px; color: var(--tekst-3); margin-bottom: 1px; }
+.thread-bubbel p { margin: 0; font-size: var(--tekst-12); line-height: 1.45; color: var(--tekst-1); }
+
+.thread-reden { margin: 0 0 8px; font-size: var(--tekst-11); color: var(--tekst-3); font-style: italic; }
+
+.thread-antwoord {
+  display: flex; align-items: center; gap: 6px;
+  margin: 8px 0; padding: 4px 4px 4px 11px;
+  border: 1px solid var(--lijn-stevig);
+  border-radius: 999px;
+  background: var(--knop);
+}
+.thread-antwoord input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--tekst-1); font: inherit; font-size: var(--tekst-12); outline: none; }
+.thread-stuur { width: 26px; height: 26px; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--accent-vlak); color: #fff; cursor: pointer; }
+.thread-stuur:disabled { opacity: .4; cursor: default; }
+
+.thread-acties { display: flex; gap: 6px; flex-wrap: wrap; }
+.thread-acties .knop { font-size: var(--tekst-12); }
+.thread-fout { margin: 6px 0 0; color: var(--rood, #c0392b); font-size: var(--tekst-11); }
+
+.thread-afwijsvraag { margin-top: 8px; padding: 10px; border: 1px solid var(--lijn); border-radius: 10px; background: var(--vul); }
+.thread-afwijsvraag label { display: block; font-size: var(--tekst-11); color: var(--tekst-2); margin-bottom: 6px; }
+.thread-afwijsvraag input { width: 100%; padding: 7px 9px; border: 1px solid var(--lijn); border-radius: 8px; background: var(--kaart); color: var(--tekst-1); font: inherit; font-size: var(--tekst-12); }
+.thread-afwijsacties { display: flex; gap: 6px; justify-content: flex-end; margin-top: 8px; }
+
+.thread-agent { margin-top: 10px; }
+.thread-agent summary { cursor: pointer; color: var(--tekst-3); font-size: var(--tekst-11); }
+.thread-agent summary:hover { color: var(--accent); }
+.thread-agent[open] summary { margin-bottom: 8px; }
+.thread-weg {
+  margin-left: 6px;
+  width: 22px; height: 22px;
+  display: inline-grid; place-items: center;
+  border: 0; border-radius: 6px; background: transparent;
+  color: var(--tekst-3); cursor: pointer;
+}
+.thread-weg:hover { background: var(--hover); color: var(--tekst-1); }
+.thread-status + .thread-weg { margin-left: 0; }
+
+.thread-status.lokaal { background: color-mix(in srgb, var(--accent-vlak) 16%, transparent); color: var(--tekst-2); }

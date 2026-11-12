@@ -1,0 +1,34 @@
+/* De zaal: één blok met het gemiddelde en de verdeling. */
+
+.zaal {
+  margin: 0 0 22px;
+  padding: 15px 17px;
+  border: 1px solid var(--lijn);
+  border-radius: 14px;
+  background: var(--kaart);
+}
+
+.zaal-kop { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.zaal-kop h2 { margin: 4px 0 0; font-size: 24px; letter-spacing: -.02em; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.zaal-kop h2 span { font-size: 12px; font-weight: 500; color: var(--tekst-3); letter-spacing: 0; }
+.zaal-mini { flex: none; }
+.zaal-feiten { display: flex; flex-direction: column; gap: 4px; margin-left: auto; align-items: flex-start; }
+.zaal-feit { color: var(--tekst-2); font-size: var(--tekst-12); }
+.zaal-feit b { color: var(--tekst-1); font-variant-numeric: tabular-nums; }
+.zaal-knop { margin-top: 4px; }
+
+.zaal-verdeling { display: flex; align-items: center; gap: 22px; margin-top: 14px; flex-wrap: wrap; }
+.zaal-taart { flex: none; }
+.zaal-legende { flex: 1 1 320px; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 4px 18px; margin: 0; padding: 0; list-style: none; }
+.zaal-legende li { display: flex; align-items: center; gap: 8px; font-size: var(--tekst-12); color: var(--tekst-2); }
+.zaal-legende li.nul { opacity: .55; }
+.zaal-stip { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+.zaal-naam { flex: 1 1 auto; }
+.zaal-deel { color: var(--tekst-1); font-variant-numeric: tabular-nums; }
+
+.zaal-bron { margin: 12px 0 0; color: var(--tekst-3); font-size: var(--tekst-11); line-height: 1.55; }
+
+@media (max-width: 800px) {
+  .zaal-feiten { margin-left: 0; }
+  .zaal-mini { display: none; }
+}

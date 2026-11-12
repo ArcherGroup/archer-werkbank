@@ -1,10 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import * as D from '../lib/data'
-import { haalLagen, haalSectie, maakVergelijking, eerstePunten, vorigeDagen, vindBrief } from '../lib/werkblad'
-import { zetVies, wisVies } from '../lib/vies'
+import { haalLagen, haalSectie, maakVergelijking, eerstePunten, vorigeDagen, vindBrief, stellingVoorDagdeel, doelVoorDagdeel } from '../lib/werkblad'
+import { useOnbewaard } from '../hooks/useOnbewaard'
+import { WERKBLOKKEN, herstelVergelijking } from '../lib/navigatie'
 import { Dialoog } from '../components/dialoog'
 import { Icoon } from '../components/Icoon'
 import { OnderzoekPaneel } from './onderzoek'
+import { Voorbereidingsketen } from '../components/voorbereidingsketen'
+import { ZaalPreview } from '../components/zaal-preview'
 import './werkblad.css'
 
 function leesbaar(tekst) {
@@ -62,16 +65,17 @@ export function VergelijkingInhoud({ brief, documentenMeta = [], naar }) {
   )
 }
 
-const WERKBLOKKEN = ['1.3', '2.1', '3.1', '4.4']
-
-export function WerkbladPagina({ naam, naar, blokken = [], documentenMeta = [], beslissingen = [], tik = 0, geladen }) {
-  const [gekozen, setGekozen] = useState('1.3')
+export function WerkbladPagina({ naam, naar, blokken = [], documentenMeta = [], bronnen = [], beslissingen = [], tik = 0, geladen, gegevensBeschikbaar, proefToegestaan = false, opActiefBlok, opComments, commentsAan = false }) {
+  const [gekozen, setGekozen] = useState(() => {
+    try { return herstelVergelijking(sessionStorage.getItem('werkbank_vergelijking')) } catch { return '1.3' }
+  })
   const [masterplan, setMasterplan] = useState(null)
   const [masterFout, setMasterFout] = useState('')
   const [brief, setBrief] = useState(null)
   const [briefFout, setBriefFout] = useState('')
   const [briefLaden, setBriefLaden] = useState(false)
   const [notities, setNotities] = useState([])
+  const [notitiesVan, setNotitiesVan] = useState(null)
   const [notitieFout, setNotitieFout] = useState('')
   const [klad, setKlad] = useState('')
   const [onderzoekVraag, setOnderzoekVraag] = useState('')
@@ -83,6 +87,11 @@ export function WerkbladPagina({ naam, naar, blokken = [], documentenMeta = [], 
   const werkblokken = useMemo(() => WERKBLOKKEN.map((id) => blokken.find((b) => b.id === id)).filter(Boolean), [blokken])
   const huidigBlok = blokken.find((b) => b.id === gekozen)
   const ggrBeslissing = beslissingen.find((b) => /ggr/i.test(b.titel || '') && b.status !== 'beslist')
+
+  useEffect(() => {
+    try { sessionStorage.setItem('werkbank_vergelijking', gekozen) } catch { /* vergelijking blijft bruikbaar zonder opslag */ }
+    opActiefBlok?.(gekozen)
+  }, [gekozen, opActiefBlok])
 
   useEffect(() => {
     if (!masterMeta?.id) { setMasterplan(null); return }
@@ -110,8 +119,10 @@ export function WerkbladPagina({ naam, naar, blokken = [], documentenMeta = [], 
     try {
       const lijst = await D.laadNotities('blok', gekozen)
       setNotities(lijst)
+      setNotitiesVan(gekozen)
       setNotitieFout('')
     } catch {
+      setNotitiesVan(null)
       setNotitieFout('De gedeelde feedback kon niet geladen worden.')
     }
   }, [gekozen])
@@ -119,24 +130,14 @@ export function WerkbladPagina({ naam, naar, blokken = [], documentenMeta = [], 
   useEffect(() => {
     let actief = true
     setNotities([])
-    D.laadNotities('blok', gekozen).then((lijst) => { if (actief) { setNotities(lijst); setNotitieFout('') } }).catch(() => {
-      if (actief) setNotitieFout('De gedeelde feedback kon niet geladen worden.')
+    setNotitiesVan(null)
+    D.laadNotities('blok', gekozen).then((lijst) => { if (actief) { setNotities(lijst); setNotitiesVan(gekozen); setNotitieFout('') } }).catch(() => {
+      if (actief) { setNotitiesVan(null); setNotitieFout('De gedeelde feedback kon niet geladen worden.') }
     })
     return () => { actief = false }
   }, [gekozen, tik])
 
-  useEffect(() => {
-    if (klad.trim() || onderzoekVraag.trim()) zetVies(() => true)
-    else wisVies()
-    return () => wisVies()
-  }, [klad, onderzoekVraag])
-
-  useEffect(() => {
-    if (!klad.trim() && !onderzoekVraag.trim()) return
-    const waarschuw = (e) => { e.preventDefault(); e.returnValue = '' }
-    window.addEventListener('beforeunload', waarschuw)
-    return () => window.removeEventListener('beforeunload', waarschuw)
-  }, [klad, onderzoekVraag])
+  useOnbewaard(!!(klad.trim() || onderzoekVraag.trim()) || bezig)
 
   const kiesBlok = (id) => {
     if (id === gekozen || bezig) return
@@ -161,6 +162,8 @@ export function WerkbladPagina({ naam, naar, blokken = [], documentenMeta = [], 
     }
   }
 
+  const stelling = stellingVoorDagdeel(brief, briefMeta, gekozen)
+  const doel = doelVoorDagdeel(brief, briefMeta, gekozen)
   const lagen = haalLagen(masterplan?.inhoud ?? '')
   const draad = haalSectie(masterplan?.inhoud ?? '', '2. De rode draad in één zin')
     .split('\n').find((regel) => /^\s*>/.test(regel))?.replace(/^\s*>\s*/, '') || ''
@@ -175,6 +178,8 @@ export function WerkbladPagina({ naam, naar, blokken = [], documentenMeta = [], 
             <p>De rode draad, wat we meenemen uit de vorige editie en wat nog een keuze vraagt.</p>
           </header>
 
+          <ZaalPreview />
+
           <section className="wb-stam" aria-labelledby="wb-stam-titel">
             <div className="wb-eyebrow">Het masterplan</div>
             <h2 id="wb-stam-titel">De rode draad</h2>
@@ -187,7 +192,7 @@ export function WerkbladPagina({ naam, naar, blokken = [], documentenMeta = [], 
             {masterMeta && <div className="wb-stam-voet"><button className="knop zacht" onClick={() => naar(`#/doc/${masterMeta.id}`)}>Open het masterplan <Icoon naam="chevronRechts" maat={14} /></button><span className="meta-klein">Bron: huidig masterplan in de werkbank</span></div>}
           </section>
 
-          {ggrBeslissing && <div className="wb-beslissing"><div className="wb-beslissing-tekst"><strong>{ggrBeslissing.titel}: nog te beslissen</strong><p>{ggrBeslissing.detail}</p></div><button className="knop" onClick={() => naar('#/planning')}>Bekijk beslissing</button></div>}
+          {ggrBeslissing && <div className="wb-beslissing"><div className="wb-beslissing-tekst"><strong>{ggrBeslissing.titel}: nog te beslissen</strong><p>{ggrBeslissing.detail}</p></div><button className="knop" onClick={() => naar(`#/beslissing/${ggrBeslissing.id}`)}>Bekijk beslissing</button></div>}
 
           <div className="wb-sectie-kop">
             <div className="wb-eyebrow">Vergelijking per dagdeel</div>
@@ -201,6 +206,16 @@ export function WerkbladPagina({ naam, naar, blokken = [], documentenMeta = [], 
           {briefFout && <p role="alert" className="wb-feedback-fout">{briefFout}</p>}
           {geladen && !briefMeta && <p className="wb-ontbreekt">Voor dit dagdeel is geen unieke brief beschikbaar in de werkbank.</p>}
           {brief && !briefLaden && <VergelijkingInhoud brief={brief} documentenMeta={documentenMeta} naar={naar} />}
+
+          {huidigBlok && <details className="vk-overzicht">
+            <summary><strong>Voorbereiding van {huidigBlok.code}</strong><span>Vraag · bronnen · stelling · lesinhoud · oefening · feedback · bijsturing</span></summary>
+            <Voorbereidingsketen blok={huidigBlok} documentenMeta={gegevensBeschikbaar?.documenten === false ? undefined : documentenMeta}
+              bronnen={gegevensBeschikbaar?.bronnen === false ? undefined : bronnen}
+              notities={notitiesVan === gekozen ? notities : undefined}
+              doel={doel?.tekst} doelBron={doel?.bron}
+              stelling={stelling?.tekst} stellingBron={stelling?.bron}
+              beslissingen={gegevensBeschikbaar?.beslissingen === false ? undefined : beslissingen} geladen={geladen} naar={naar} niveau={3} />
+          </details>}
 
           {huidigBlok && <section className="wb-feedback" aria-labelledby="wb-feedback-titel">
             <div className="wb-eyebrow">Samen verder werken</div>
@@ -216,7 +231,7 @@ export function WerkbladPagina({ naam, naar, blokken = [], documentenMeta = [], 
 
           <OnderzoekPaneel vraag={onderzoekVraag} opVraagWijzig={setOnderzoekVraag} />
 
-          <div className="wb-links"><button className="knop" onClick={() => naar('#/planning')}>Beslissingen en voorstellen</button><button className="knop" onClick={() => naar('#/status')}>Volledige stand van zaken</button><button className="knop zacht" onClick={() => naar('#/bronnen')}>Alle bronnen</button></div>
+          <div className="wb-links"><button className="knop" onClick={() => naar('#/planning')}>Beslissingen en voorstellen</button><button className="knop" onClick={() => naar('#/status')}>Volledige stand van zaken</button><button className="knop zacht" onClick={() => naar('#/bronnen')}>Alle bronnen</button><button className="knop zacht" onClick={() => opComments?.()}>Comments bij {gekozen}{commentsAan ? ' · aan' : ''}</button>{proefToegestaan && <button className="knop zacht" onClick={() => naar('#/agent-proef')}>Probeer de commentaaragent</button>}</div>
         </div>
       </main>
       <Dialoog

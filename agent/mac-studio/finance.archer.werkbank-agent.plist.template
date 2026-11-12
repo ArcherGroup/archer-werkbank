@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Sjabloon, niet installeren voordat de beveiligingscontrole en migratie zijn goedgekeurd. -->
+  <key>Label</key><string>finance.archer.werkbank-agent</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__PYTHON_IN_VENV__</string>
+    <string>-m</string><string>agent.werker</string><string>--keychain</string>
+  </array>
+  <key>WorkingDirectory</key><string>__WERKBANK_MAP__</string>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
+  <key>ThrottleInterval</key><integer>60</integer>
+  <key>StandardOutPath</key><string>__LOG_MAP__/werker.log</string>
+  <key>StandardErrorPath</key><string>__LOG_MAP__/werker-fouten.log</string>
+</dict>
+</plist>

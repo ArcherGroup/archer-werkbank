@@ -1,0 +1,219 @@
+/* Agentopdracht bij een notitie (agent-comment.jsx).
+   Rustig en Apple-achtig: een gewone kaart, haarlijnen in plaats van dozen in dozen, kleur alleen
+   waar ze iets betekent. Alleen eigen selectors (.agent-comment…) en de bestaande tokens uit
+   styles.css, dus beide thema's kleuren vanzelf mee. Knoppen komen uit de bestaande .knop-stijl. */
+
+.agent-comment {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 12px 14px;
+  background: var(--kaart);
+  color: var(--tekst-1);
+  border: 1px solid var(--lijn);
+  border-radius: var(--straal);
+  font-size: var(--tekst-13);
+  letter-spacing: var(--track-13);
+  line-height: 1.45;
+}
+.agent-comment p { margin: 0; }
+
+.agent-comment-kop { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.agent-comment-titel {
+  font-size: var(--tekst-12);
+  font-weight: 600;
+  letter-spacing: var(--track-12);
+  color: var(--tekst-2);
+}
+
+/* ---------------------------------------------------------------- status */
+
+.agent-comment-statusregel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.agent-comment-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--leeg-bg);
+  color: var(--leeg);
+  font-size: var(--tekst-12);
+  font-weight: 600;
+  letter-spacing: var(--track-12);
+  line-height: 1;
+  white-space: nowrap;
+}
+.agent-comment-status svg { flex-shrink: 0; }
+.agent-comment-status[data-status='bezig'] { background: var(--review-bg); color: var(--review); }
+.agent-comment-status[data-status='klaar'] { background: var(--klaar-bg); color: var(--klaar); }
+.agent-comment-status[data-status='mislukt'] { background: var(--rood-bg); color: var(--rood); }
+.agent-comment-status[data-status='geannuleerd'] { background: var(--vul); color: var(--tekst-2); }
+.agent-comment-status[data-status='onbekend'] { background: var(--concept-bg); color: var(--concept); }
+.agent-comment-statustekst { flex: 1 1 14rem; min-width: 0; color: var(--tekst-2); }
+.agent-comment-tijd {
+  color: var(--tekst-3);
+  font-size: var(--tekst-12);
+  letter-spacing: var(--track-12);
+  font-variant-numeric: tabular-nums;
+}
+.agent-comment-melding { flex-basis: 100%; color: var(--tekst-1); overflow-wrap: anywhere; }
+
+.agent-comment-draait { animation: agent-comment-draai 900ms linear infinite; }
+@keyframes agent-comment-draai { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .agent-comment-draait { animation: none; } }
+
+/* ---------------------------------------------------------------- wat de agent teruggeeft */
+
+.agent-comment-resultaat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--lijn);
+}
+.agent-comment-resultaatkop { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; }
+.agent-comment-resultaattitel { font-weight: 600; }
+.agent-comment-pil {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--accent-zacht);
+  color: var(--accent-ink);
+  font-size: var(--tekst-12);
+  font-weight: 600;
+  letter-spacing: var(--track-12);
+  line-height: 1;
+  white-space: nowrap;
+}
+.agent-comment-resultaat[data-soort='antwoord'] .agent-comment-pil,
+.agent-comment-resultaat[data-soort='zonder-voorstel'] .agent-comment-pil { background: var(--concept-bg); color: var(--concept); }
+
+.agent-comment-waarschuwing {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 11px;
+  border-radius: 8px;
+  background: var(--vul-sterk);
+  color: var(--tekst-2);
+  font-size: var(--tekst-12);
+  letter-spacing: var(--track-12);
+  line-height: 1.5;
+}
+.agent-comment-waarschuwing svg { flex-shrink: 0; margin-top: 2px; color: var(--concept); }
+
+.agent-comment-vergelijk { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 10px; }
+.agent-comment-veld { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.agent-comment-label {
+  color: var(--tekst-2);
+  font-size: var(--tekst-12);
+  font-weight: 600;
+  letter-spacing: var(--track-12);
+}
+
+/* Platte tekst: regeleinden blijven, lange woorden breken, niets wordt opgemaakt. */
+.agent-comment-tekst {
+  padding: 8px 11px;
+  border-left: 3px solid var(--rand);
+  border-radius: 3px 8px 8px 3px;
+  background: var(--vul-sterk);
+  color: var(--tekst-1);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.agent-comment-tekst + .agent-comment-tekst { margin-top: 6px; }
+.agent-comment-veld[data-veld='voorgesteld'] .agent-comment-tekst { border-left-color: var(--accent); background: var(--accent-zacht); }
+.agent-comment-veld[data-veld='reden'] .agent-comment-tekst,
+.agent-comment-veld[data-veld='uitleg'] .agent-comment-tekst,
+.agent-comment-veld[data-veld='antwoord'] .agent-comment-tekst {
+  padding: 0 0 0 10px;
+  border-left: 2px solid var(--lijn-stevig);
+  border-radius: 0;
+  background: transparent;
+  color: var(--tekst-1);
+}
+
+.agent-comment-meta,
+.agent-comment-notitie {
+  color: var(--tekst-3);
+  font-size: var(--tekst-12);
+  letter-spacing: var(--track-12);
+}
+
+/* ---------------------------------------------------------------- bronnen */
+
+.agent-comment-bronnen { display: flex; flex-direction: column; gap: 5px; }
+.agent-comment-bronlijst { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.agent-comment-bron { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; overflow-wrap: anywhere; }
+.agent-comment-bron a { color: var(--accent-ink); font-weight: 600; text-decoration: none; }
+.agent-comment-bron a:hover { text-decoration: underline; }
+.agent-comment-bronnaam { font-weight: 600; }
+.agent-comment-host,
+.agent-comment-bronnoot,
+.agent-comment-citaatlabel { color: var(--tekst-3); font-size: var(--tekst-12); letter-spacing: var(--track-12); }
+.agent-comment-citaat {
+  flex-basis: 100%;
+  padding-left: 10px;
+  border-left: 2px solid var(--lijn-stevig);
+  color: var(--tekst-2);
+  white-space: pre-wrap;
+}
+
+/* ---------------------------------------------------------------- beoordelen en starten */
+
+.agent-comment-beoordeling,
+.agent-comment-start { display: flex; flex-direction: column; gap: 8px; }
+.agent-comment-beoordeling { padding-top: 10px; border-top: 1px solid var(--lijn); }
+.agent-comment-start { align-items: flex-start; }
+
+.agent-comment-hint { color: var(--tekst-2); font-size: var(--tekst-12); letter-spacing: var(--track-12); }
+.agent-comment-hint p + p { margin-top: 3px; }
+.agent-comment-knoppen { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+
+.agent-comment-bevestig {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 11px 12px;
+  border: 1px solid var(--lijn-stevig);
+  border-radius: 9px;
+  background: var(--vul-sterk);
+  animation: agent-comment-in var(--snel) var(--veer);
+}
+.agent-comment-bevestigtitel { font-weight: 600; }
+@keyframes agent-comment-in { from { opacity: 0; transform: translateY(-3px); } }
+
+.agent-comment-besluit {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 11px;
+  border-radius: 8px;
+  background: var(--vul-sterk);
+}
+.agent-comment-besluit svg { flex-shrink: 0; margin-top: 2px; color: var(--tekst-2); }
+.agent-comment-besluit[data-besluit='goedgekeurd'],
+.agent-comment-besluit[data-besluit='toegepast'] { background: var(--klaar-bg); }
+.agent-comment-besluit[data-besluit='goedgekeurd'] svg,
+.agent-comment-besluit[data-besluit='toegepast'] svg { color: var(--klaar); }
+.agent-comment-besluit[data-besluit='onbekend'] { background: var(--concept-bg); }
+
+.agent-comment-fout { padding: 8px 11px; border-radius: 8px; background: var(--rood-bg); color: var(--rood); }
+.agent-comment-lokaal { color: var(--tekst-2); }
+
+/* Uit is zichtbaar uit; bezig is zichtbaar bezig. De globale hover- en indrukeffecten blijven daar weg. */
+.agent-comment .knop:disabled { opacity: 1; cursor: not-allowed; background: var(--vul-sterk); color: var(--tekst-3); border-color: var(--lijn-stevig); }
+.agent-comment .knop:disabled:hover { background: var(--vul-sterk); border-color: var(--lijn-stevig); }
+.agent-comment .knop.primair:disabled:hover { background: var(--vul-sterk); border-color: var(--lijn-stevig); }
+.agent-comment .knop:disabled:active { transform: none; }
+.agent-comment .knop[aria-disabled='true'] { opacity: 0.6; cursor: progress; }
+.agent-comment .knop[aria-expanded='true'] { box-shadow: 0 0 0 3px var(--accent-ring); }
+
+@media (forced-colors: active) {
+  .agent-comment-status,
+  .agent-comment-pil,
+  .agent-comment-waarschuwing,
+  .agent-comment-besluit,
+  .agent-comment-fout { border: 1px solid CanvasText; }
+  .agent-comment-tekst { border-left-color: CanvasText; }
+}

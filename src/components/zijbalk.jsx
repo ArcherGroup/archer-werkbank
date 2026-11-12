@@ -9,10 +9,11 @@ const VAST = [
   { id: '#/', icoon: 'overzicht', titel: 'Werkblad' },
   { id: '#/status', icoon: 'dagdeel', titel: 'Stand van zaken' },
   { id: '#/planning', icoon: 'planning', titel: 'Planning' },
+  { id: '#/actua', icoon: 'vernieuwen', titel: 'Actua' },
   { id: '#/bronnen', icoon: 'bronnen', titel: 'Bronnen' },
 ]
 
-export function Zijbalk({ route, naar, blokken, bronnen, beslissingen, voorstellen }) {
+export function Zijbalk({ route, naar, blokken, bronnen, beslissingen, voorstellen, menuOpen = false }) {
   const perDag = useMemo(() => {
     const m = {}
     for (const b of blokken) {
@@ -60,7 +61,7 @@ export function Zijbalk({ route, naar, blokken, bronnen, beslissingen, voorstell
   )
 
   return (
-    <nav className="zijbalk" aria-label="Navigatie" {...lijstProps}>
+    <nav id="hoofd-navigatie" className={`zijbalk${menuOpen ? ' open' : ''}`} aria-label="Navigatie" {...lijstProps}>
       <div className="zij-sectie">
         {VAST.map((v) =>
           zijItem(

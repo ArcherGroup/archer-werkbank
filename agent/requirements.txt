@@ -1,0 +1,2 @@
+# PostgreSQL-adapter voor de gedeelde werker; geen service-role in de app.
+psycopg[binary]==3.2.13

@@ -4,8 +4,9 @@ import { Pill } from '../components/basis'
 import { Icoon } from '../components/Icoon'
 import { LegeStaat } from '../components/leegstaat'
 import { Skelet, SkeletAlinea } from '../components/skelet'
-import { InvoerDialoog } from '../components/dialoog'
+import { Dialoog } from '../components/dialoog'
 import { meld } from '../components/meldingen'
+import { useOnbewaard } from '../hooks/useOnbewaard'
 
 const SOORTEN = [
   ['research', 'Research', 'research'],
@@ -14,12 +15,31 @@ const SOORTEN = [
   ['vraag', 'Vraag', 'info'],
 ]
 
+export function ValidatieReview({ validatie, bezig, opBevestig, opAnnuleer }) {
+  const klaar = validatie?.status === 'klaar'
+  const context = [validatie?.wie && `Verantwoordelijke: ${validatie.wie}`, validatie?.wanneer && `Wanneer: ${validatie.wanneer}`, validatie?.detail].filter(Boolean).join('. ')
+  return <Dialoog open={!!validatie} titel={validatie?.onderwerp || ''}
+    tekst={`${context}. Je wijzigt alleen de status; de werkbank controleert niet of de verantwoordelijke de inhoud heeft gevalideerd.`}
+    actie={bezig ? 'Bewaren…' : klaar ? 'Validatie heropenen' : 'Als gevalideerd markeren'}
+    opBevestig={() => opBevestig?.(validatie, !klaar)} opAnnuleer={opAnnuleer} />
+}
+
+export function VoorstelReview({ voorstel, bezig, opBevestig, opAnnuleer }) {
+  const open = voorstel?.status === 'open'
+  return <Dialoog open={!!voorstel} titel={voorstel?.titel || ''}
+    tekst={`${voorstel?.detail || 'Geen toelichting opgegeven.'} Je wijzigt alleen de status; stukken worden hierdoor niet automatisch aangepast.`}
+    actie={bezig ? 'Bewaren…' : open ? 'Als gedaan markeren' : 'Voorstel heropenen'}
+    opBevestig={() => opBevestig?.(voorstel, open ? 'gedaan' : 'open')} opAnnuleer={opAnnuleer} />
+}
+
 export function PlanningPagina({ naar, beslissingen, validaties, voorstellen, naam, herlaad, geladen }) {
   const [vSoort, setVSoort] = useState('research')
   const [vTitel, setVTitel] = useState('')
   const [vDetail, setVDetail] = useState('')
-  const [beslisVraag, setBeslisVraag] = useState(null) // de beslissing die om een besluit vraagt
+  const [validatieVraag, setValidatieVraag] = useState(null)
+  const [voorstelVraag, setVoorstelVraag] = useState(null)
   const [bezig, setBezig] = useState(false)
+  useOnbewaard(!!(vTitel.trim() || vDetail.trim()) || bezig)
 
   const open = beslissingen.filter((b) => b.status !== 'beslist')
   const beslist = beslissingen.filter((b) => b.status === 'beslist')
@@ -47,25 +67,10 @@ export function PlanningPagina({ naar, beslissingen, validaties, voorstellen, na
       </>
     )
 
-  const beslis = async (besluit) => {
-    const b = beslisVraag
-    if (!b) return
-    setBezig(true)
-    try {
-      await D.zetBeslissing(b.id, { status: 'beslist', besluit })
-      meld('Beslissing vastgelegd.')
-      setBeslisVraag(null)
-      herlaad?.()
-    } catch {
-      meld('De beslissing kon niet bewaard worden. Probeer opnieuw.', { fout: true })
-    } finally {
-      setBezig(false)
-    }
-  }
-
   const heropen = async (b) => {
     try {
-      await D.zetBeslissing(b.id, { status: 'open', besluit: null })
+      // De eerdere beslissing blijft leesbaar totdat een nieuwe keuze wordt vastgelegd.
+      await D.zetBeslissing(b.id, { status: 'open' })
       herlaad?.()
     } catch {
       meld('Heropenen mislukte. Probeer opnieuw.', { fout: true })
@@ -73,11 +78,17 @@ export function PlanningPagina({ naar, beslissingen, validaties, voorstellen, na
   }
 
   const klaarValidatie = async (v, klaar) => {
+    if (bezig) return
+    setBezig(true)
     try {
       await D.zetValidatie(v.id, { status: klaar ? 'klaar' : 'open' })
-      herlaad?.()
+      setValidatieVraag(null)
+      await herlaad?.()
+      meld(klaar ? 'Validatie als afgerond gemarkeerd.' : 'Validatie opnieuw geopend.')
     } catch {
       meld('De validatie kon niet bijgewerkt worden.', { fout: true })
+    } finally {
+      setBezig(false)
     }
   }
 
@@ -99,11 +110,17 @@ export function PlanningPagina({ naar, beslissingen, validaties, voorstellen, na
   }
 
   const zetVoorstelStatus = async (v, status) => {
+    if (bezig) return
+    setBezig(true)
     try {
       await D.zetVoorstel(v.id, { status })
-      herlaad?.()
+      setVoorstelVraag(null)
+      await herlaad?.()
+      meld(status === 'gedaan' ? 'Voorstel als gedaan gemarkeerd.' : 'Voorstel opnieuw geopend.')
     } catch {
       meld('Bijwerken mislukte. Probeer opnieuw.', { fout: true })
+    } finally {
+      setBezig(false)
     }
   }
 
@@ -130,8 +147,8 @@ export function PlanningPagina({ naar, beslissingen, validaties, voorstellen, na
                 </div>
                 <div className="d">{b.detail}</div>
                 <div className="acties">
-                  <button className="knop primair" onClick={() => setBeslisVraag(b)}>
-                    Beslechten
+                  <button className="knop primair" onClick={() => naar(`#/beslissing/${b.id}`)}>
+                    Bekijk beslissing
                   </button>
                   <span className="meta-klein" style={{ alignSelf: 'center' }}>
                     eigenaar {b.eigenaar}
@@ -152,6 +169,7 @@ export function PlanningPagina({ naar, beslissingen, validaties, voorstellen, na
                   </div>
                   <div className="d">{b.besluit}</div>
                   <div className="acties">
+                    <button className="knop" onClick={() => naar(`#/beslissing/${b.id}`)}>Bekijk dossier</button>
                     <button className="knop zacht" onClick={() => heropen(b)}>
                       Heropen
                     </button>
@@ -176,16 +194,10 @@ export function PlanningPagina({ naar, beslissingen, validaties, voorstellen, na
                 {v.detail ? ` · ${v.detail}` : ''}
               </div>
               <div className="acties">
-                {v.status !== 'klaar' ? (
-                  <button className="knop" onClick={() => klaarValidatie(v, true)}>
-                    <Icoon naam="vinkje" maat={13} />
-                    Gevalideerd
-                  </button>
-                ) : (
-                  <button className="knop zacht" onClick={() => klaarValidatie(v, false)}>
-                    Heropen
-                  </button>
-                )}
+                <button className="knop" disabled={bezig} onClick={() => setValidatieVraag(v)}>
+                  <Icoon naam="info" maat={13} />
+                  {v.status === 'klaar' ? 'Bekijk status' : 'Bekijk validatie'}
+                </button>
               </div>
             </div>
           ))}
@@ -210,7 +222,7 @@ export function PlanningPagina({ naar, beslissingen, validaties, voorstellen, na
               <label className="veldlabels" htmlFor="vs-titel">
                 Korte titel
               </label>
-              <input id="vs-titel" value={vTitel} onChange={(e) => setVTitel(e.target.value)} placeholder="Waar gaat het over?" />
+              <input id="vs-titel" readOnly={bezig} value={vTitel} onChange={(e) => setVTitel(e.target.value)} placeholder="Waar gaat het over?" />
             </div>
             <div className="veld">
               <label className="veldlabels" htmlFor="vs-detail">
@@ -218,6 +230,7 @@ export function PlanningPagina({ naar, beslissingen, validaties, voorstellen, na
               </label>
               <textarea
                 id="vs-detail"
+                readOnly={bezig}
                 value={vDetail}
                 onChange={(e) => setVDetail(e.target.value)}
                 placeholder="Wat wil je voorstellen of vragen? Hoe concreter, hoe sneller het opgepakt wordt."
@@ -250,16 +263,10 @@ export function PlanningPagina({ naar, beslissingen, validaties, voorstellen, na
                 <span className="meta-klein" style={{ alignSelf: 'center' }}>
                   {v.auteur} · {D.datumKort(v.created_at)}
                 </span>
-                {v.status === 'open' ? (
-                  <button className="knop" onClick={() => zetVoorstelStatus(v, 'gedaan')}>
-                    <Icoon naam="vinkje" maat={13} />
-                    Gedaan
-                  </button>
-                ) : (
-                  <button className="knop zacht" onClick={() => zetVoorstelStatus(v, 'open')}>
-                    Heropen
-                  </button>
-                )}
+                <button className="knop" disabled={bezig} onClick={() => setVoorstelVraag(v)}>
+                  <Icoon naam="info" maat={13} />
+                  {v.status === 'open' ? 'Bekijk voorstel' : 'Bekijk status'}
+                </button>
               </div>
             </div>
           ))}
@@ -275,17 +282,8 @@ export function PlanningPagina({ naar, beslissingen, validaties, voorstellen, na
         </div>
       </aside>
 
-      <InvoerDialoog
-        open={!!beslisVraag}
-        titel={beslisVraag ? `Besluit over “${beslisVraag.titel}”` : ''}
-        tekst="Wat er ook uit komt: schrijf het op, dan is het voor iedereen duidelijk en hoeft niemand er nog naar te vragen."
-        label="Het besluit"
-        placeholder="bijvoorbeeld: we houden de keynote op 50 minuten"
-        beginwaarde={beslisVraag?.besluit ?? ''}
-        actie={bezig ? 'Bewaren…' : 'Vastleggen'}
-        opBevestig={beslis}
-        opAnnuleer={() => setBeslisVraag(null)}
-      />
+      <ValidatieReview validatie={validatieVraag} bezig={bezig} opBevestig={klaarValidatie} opAnnuleer={() => !bezig && setValidatieVraag(null)} />
+      <VoorstelReview voorstel={voorstelVraag} bezig={bezig} opBevestig={zetVoorstelStatus} opAnnuleer={() => !bezig && setVoorstelVraag(null)} />
     </>
   )
 }

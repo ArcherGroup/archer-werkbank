@@ -5,6 +5,7 @@ import { Icoon } from '../components/Icoon'
 import { LegeStaat } from '../components/leegstaat'
 import { Skelet, SkeletAlinea } from '../components/skelet'
 import { meld } from '../components/meldingen'
+import { useOnbewaard } from '../hooks/useOnbewaard'
 
 const FILTERS = [
   ['alle', 'Alle'],
@@ -57,6 +58,7 @@ export function BronnenPagina({ naar, bronnen, blokken, naam, herlaad, geladen }
   const [urlFout, setUrlFout] = useState('')
   const [bezig, setBezig] = useState(false)
   const [limiet, setLimiet] = useState(200)
+  useOnbewaard(!!(nieuwUrl.trim() || nieuwTitel.trim()) || bezig)
 
   useEffect(() => { setLimiet(200) }, [filter, blokFilter, q])
 
@@ -162,6 +164,7 @@ export function BronnenPagina({ naar, bronnen, blokken, naam, herlaad, geladen }
                 </label>
                 <input
                   id="bron-url"
+                  readOnly={bezig}
                   value={nieuwUrl}
                   onChange={(e) => {
                     setNieuwUrl(e.target.value)
@@ -189,7 +192,7 @@ export function BronnenPagina({ naar, bronnen, blokken, naam, herlaad, geladen }
                 <label className="veldlabels" htmlFor="bron-titel">
                   Titel (mag leeg blijven)
                 </label>
-                <input id="bron-titel" value={nieuwTitel} onChange={(e) => setNieuwTitel(e.target.value)} placeholder="Waar gaat de pagina over?" />
+                <input id="bron-titel" readOnly={bezig} value={nieuwTitel} onChange={(e) => setNieuwTitel(e.target.value)} placeholder="Waar gaat de pagina over?" />
               </div>
               <div className="veld">
                 <label className="veldlabels" htmlFor="bron-blok">

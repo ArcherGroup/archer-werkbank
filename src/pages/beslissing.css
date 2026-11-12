@@ -1,0 +1,38 @@
+.besl-binnen { max-width: 900px; }
+.besl-kop { padding: 10px 0 26px; border-bottom: 1px solid var(--lijn); }
+.besl-kop h1 { margin: 8px 0; font-size: clamp(25px, 3vw, 34px); line-height: 1.12; letter-spacing: -.025em; }
+.besl-kop p, .besl-sectie > p { color: var(--tekst-2); line-height: 1.6; max-width: 72ch; }
+.besl-eyebrow { color: var(--accent-ink); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.besl-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 9px 15px; margin-top: 18px; color: var(--tekst-2); font-size: 12px; }
+.besl-sectie { margin-top: 32px; }
+.besl-sectie h2 { font-size: 21px; margin: 7px 0 8px; }
+.besl-bronnen { display: grid; gap: 12px; margin-top: 18px; }
+.besl-bron, .besl-bestaand { min-width: 0; padding: 18px; border: 1px solid var(--lijn); border-radius: 12px; background: var(--kaart); }
+.besl-bestaand { margin-top: 20px; }
+.besl-bestaand p, .besl-passage { white-space: pre-wrap; line-height: 1.6; color: var(--tekst-2); }
+.besl-bron-kop { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.besl-tabel-wrap { overflow-x: auto; margin: 14px 0; }
+.besl-tabel { border-collapse: collapse; width: 100%; font-size: 12px; line-height: 1.5; }
+.besl-tabel th, .besl-tabel td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--lijn); }
+.besl-tabel th { color: var(--tekst-2); font-weight: 650; }
+.besl-opties { border: 0; margin: 18px 0; padding: 0; display: grid; gap: 10px; }
+.besl-optie { display: flex; align-items: flex-start; gap: 12px; border: 1px solid var(--lijn-stevig); border-radius: 10px; padding: 14px; background: var(--kaart); cursor: pointer; }
+.besl-optie.gekozen { border-color: var(--accent); background: var(--accent-zacht); }
+.besl-optie.uit { opacity: .7; cursor: not-allowed; }
+.besl-optie input { margin: 3px 0 0; accent-color: var(--accent); }
+.besl-optie span { display: grid; gap: 5px; }
+.besl-optie small { color: var(--tekst-2); line-height: 1.45; }
+.besl-sectie textarea { width: 100%; min-height: 90px; resize: vertical; }
+.besl-hulp { font-size: 12px; line-height: 1.55; color: var(--tekst-2); }
+.besl-fout { padding: 12px 14px; color: var(--rood); background: var(--rood-bg); border-radius: 9px; line-height: 1.5; }
+.besl-succes { margin-top: 20px; padding: 12px 14px; color: var(--klaar); background: var(--klaar-bg); border-radius: 9px; }
+.doc-beslislinks { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+.doc-linkkiezer { margin-bottom: 14px; padding: 16px; border: 1px solid var(--lijn-stevig); border-radius: 10px; background: var(--kaart); }
+.doc-linkkiezer p { margin: 7px 0 12px; color: var(--tekst-2); line-height: 1.5; font-size: 12px; }
+.doc-linkkiezer .seg { margin-bottom: 12px; }
+.doc-linkkiezer > input { width: 100%; margin-bottom: 8px; }
+.doc-linkresultaten { max-height: 200px; overflow-y: auto; border: 1px solid var(--lijn); border-radius: 8px; }
+.doc-linkresultaten button { width: 100%; display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 9px 11px; border: 0; border-bottom: 1px solid var(--lijn); background: transparent; color: var(--tekst-1); text-align: left; }
+.doc-linkresultaten button:hover { background: var(--hover); }
+.doc-linkresultaten button span { flex: none; color: var(--tekst-3); font-size: 11px; }
+@media (max-width: 800px) { .besl-tabel { min-width: 500px; } .besl-kop { padding-top: 2px; } }

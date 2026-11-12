@@ -30,6 +30,32 @@ export function haalSectie(markdown, titel) {
   return regels.slice(begin, einde).join('\n').trim()
 }
 
+function eersteAlineaUitSectie(markdown, kop) {
+  const sectie = haalSectie(markdown, kop)
+  if (!sectie) return null
+  const eersteAlinea = sectie.split(/\n\s*\n/).find((alinea) => alinea.trim()) || ''
+  const tekst = eersteAlinea.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/\*\*|__|`/g, '').replace(/^\s*>\s?/gm, '').replace(/\s+/g, ' ').trim()
+  return tekst || null
+}
+
+export function kernboodschapVoorKeten(markdown) {
+  return eersteAlineaUitSectie(markdown, 'Kernboodschap')
+}
+
+function tekstVoorDagdeel(document, briefMeta, blokId, kop) {
+  if (!document || !briefMeta || document.id !== briefMeta.id || document.blok_id !== blokId || briefMeta.blok_id !== blokId) return null
+  const tekst = eersteAlineaUitSectie(document.inhoud, kop)
+  return tekst ? { tekst, bron: { id: briefMeta.id } } : null
+}
+
+export function stellingVoorDagdeel(document, briefMeta, blokId) {
+  return tekstVoorDagdeel(document, briefMeta, blokId, 'Kernboodschap')
+}
+
+export function doelVoorDagdeel(document, briefMeta, blokId) {
+  return tekstVoorDagdeel(document, briefMeta, blokId, 'Doel')
+}
+
 export function vorigeDagen(markdown) {
   const tekst = haalSectie(markdown, 'Hergebruik uit september')
   const nummers = Array.from(tekst.matchAll(/\bdag\s*([0-4])\b/gi), (m) => Number(m[1]))

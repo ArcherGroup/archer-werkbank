@@ -1,20 +1,18 @@
-// Bewaking tegen werkverlies. De editor meldt zich hier aan zolang er
-// onbewaarde wijzigingen staan; elke navigatie en elk sluiten van het
-// tabblad vraagt dan eerst om bevestiging.
-//
-// Bewust een module-variabele en geen React-state: de check gebeurt in
-// `naar()` (buiten de render) en in beforeunload, waar geen state bij kan.
-
-let controleur = null
+// Bewaak alle onbewaarde velden onafhankelijk. Elke registratie krijgt zijn
+// eigen cleanup; een veld mag de waarschuwing van een ander veld niet wissen.
+// wisVies() is uitsluitend voor een expliciet globaal weggooi-besluit.
+const controleurs = new Map()
 
 export function zetVies(fn) {
-  controleur = fn
+  const sleutel = Symbol('onbewaard')
+  controleurs.set(sleutel, fn)
+  return () => controleurs.delete(sleutel)
 }
 
 export function wisVies() {
-  controleur = null
+  controleurs.clear()
 }
 
 export function isVies() {
-  return typeof controleur === 'function' && controleur() === true
+  return [...controleurs.values()].some((fn) => typeof fn === 'function' && fn() === true)
 }

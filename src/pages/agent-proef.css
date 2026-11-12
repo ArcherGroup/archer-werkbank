@@ -1,0 +1,172 @@
+/* Agentproef (agent-proef.jsx).
+   Een lokale, verzonnen proef met de commentaaragent. Rustig en Apple-achtig, net als de rest van de
+   werkbank: gewone kaarten, haarlijnen, kleur alleen waar ze iets betekent. Alleen eigen selectors
+   (.ap-…) en de bestaande tokens uit styles.css, dus het donkere thema kleurt vanzelf mee. Knoppen,
+   kruimels, lege staten en de focusring komen uit styles.css; AgentComment brengt zijn eigen stijl mee. */
+
+/* Dubbele klasse: wint ook als styles.css later geladen wordt dan deze pagina. */
+.ap-binnen.hoofd-binnen { max-width: 920px; }
+
+/* ---------------------------------------------------------------- kop en eerlijke labels */
+
+.ap-kop { padding: 4px 0 22px; border-bottom: 1px solid var(--lijn); }
+.ap-eyebrow {
+  color: var(--accent-ink);
+  font-size: var(--tekst-11);
+  font-weight: 700;
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+}
+.ap-kop h1 {
+  margin: 6px 0 8px;
+  font-size: var(--tekst-24);
+  font-weight: 600;
+  line-height: 1.17;
+  letter-spacing: var(--track-24);
+}
+.ap-kop > p { margin: 0; max-width: 64ch; color: var(--tekst-2); line-height: 1.55; }
+
+.ap-labels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ap-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--lijn);
+  border-radius: var(--straal);
+  background: var(--kaart);
+  color: var(--tekst-2);
+  font-size: var(--tekst-12);
+  letter-spacing: var(--track-12);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.ap-label-kop {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--accent-zacht);
+  color: var(--accent-ink);
+  font-size: var(--tekst-12);
+  font-weight: 600;
+  letter-spacing: var(--track-12);
+  line-height: 1;
+  white-space: nowrap;
+}
+.ap-kost { margin: 12px 0 0; color: var(--tekst-2); font-size: var(--tekst-12); letter-spacing: var(--track-12); }
+
+/* ---------------------------------------------------------------- laden en lege staten */
+
+.ap-laden, .ap-staat { margin-top: 24px; }
+
+/* ---------------------------------------------------------------- stuk en notitie */
+
+.ap-raster {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  align-items: start;
+  gap: 16px;
+  margin-top: 22px;
+}
+.ap-kaart {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--lijn);
+  border-radius: var(--straal);
+  background: var(--kaart);
+  color: var(--tekst-1);
+}
+.ap-kaart h2 { margin: 0; font-size: var(--tekst-15); font-weight: 600; line-height: 1.3; letter-spacing: var(--track-15); }
+.ap-kaart p { margin: 0; }
+.ap-kaartkop { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+
+/* Platte tekst in een eigen scrollgebied dat met het toetsenbord bereikbaar is (tabindex in de pagina). */
+.ap-stuk {
+  max-height: 24rem;
+  overflow: auto;
+  padding: 12px 14px;
+  border: 1px solid var(--lijn);
+  border-radius: 8px;
+  background: var(--pagina);
+  color: var(--tekst-1);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ap-notitie { color: var(--tekst-1); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ap-legende { line-height: 1.45; }
+
+/* Een markering is ook zonder kleur te zien: gestippeld onderstreept is de passage van de notitie,
+   doorgetrokken onderstreept is de nieuwe tekst na een goedkeuring. */
+.ap-markering { padding: 0 1px; border-radius: 3px; text-underline-offset: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.ap-markering[data-soort='anker'] { background: var(--markeer); color: var(--tekst-1); text-decoration: underline dotted; text-decoration-thickness: 1.5px; }
+.ap-markering[data-soort='nieuw'] { background: var(--klaar-bg); color: var(--tekst-1); text-decoration: underline solid; text-decoration-thickness: 2px; }
+
+/* ---------------------------------------------------------------- meldingen */
+
+.ap-banner, .ap-melding {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 11px;
+  border-radius: 8px;
+  background: var(--vul-sterk);
+  color: var(--tekst-1);
+  font-size: var(--tekst-12);
+  letter-spacing: var(--track-12);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.ap-banner svg, .ap-melding svg { flex-shrink: 0; margin-top: 2px; }
+.ap-melding { margin: 16px 0 0; }
+.ap-banner[data-soort='aangepast'] { background: var(--klaar-bg); color: var(--klaar); }
+.ap-banner[data-soort='afgewezen'] { background: var(--vul-sterk); color: var(--tekst-1); }
+.ap-banner[data-soort='onbevestigd'] { background: var(--concept-bg); color: var(--concept); }
+.ap-melding[data-soort='ok'] { background: var(--klaar-bg); color: var(--klaar); }
+.ap-melding[data-soort='wacht'] { background: var(--concept-bg); color: var(--concept); }
+.ap-melding[data-soort='fout'] { background: var(--rood-bg); color: var(--rood); }
+
+/* ---------------------------------------------------------------- voet: terug, verversen, opnieuw beginnen */
+
+.ap-voet {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--lijn);
+}
+.ap-voet-acties { display: flex; flex-wrap: wrap; gap: 8px; }
+.ap-voet .knop[aria-disabled='true'] { opacity: 0.6; cursor: progress; }
+.ap-hint { flex-basis: 100%; margin: 0; line-height: 1.45; }
+.ap-terug-icoon { transform: rotate(180deg); }
+
+/* ---------------------------------------------------------------- schermen */
+
+@media (max-width: 800px) {
+  .ap-raster { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  .ap-binnen.hoofd-binnen { padding-inline: 18px; }
+  .ap-kaart { padding: 14px; }
+  .ap-voet { align-items: flex-start; }
+}
+
+/* Geforceerde kleuren verwijderen achtergronden: randen en systeemkleuren houden alles zichtbaar. */
+@media (forced-colors: active) {
+  .ap-banner, .ap-melding, .ap-label, .ap-label-kop, .ap-kaart, .ap-stuk { border: 1px solid CanvasText; }
+  .ap-markering[data-soort='anker'], .ap-markering[data-soort='nieuw'] { background: Highlight; color: HighlightText; }
+}

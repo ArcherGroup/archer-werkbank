@@ -1,0 +1,79 @@
+{
+  "macro": {
+    "naam": "Macro België en Europa",
+    "agent": "macro-wachter",
+    "ritme": "maandelijks",
+    "wat": "inflatie, groei, rente, werkloosheid, koopkracht",
+    "bronnen": [
+      { "naam": "Statbel consumptieprijsindex", "url": "https://statbel.fgov.be/nl/themas/consumer-prices/consumer-price-index", "soort": "officieel" },
+      { "naam": "Eurostat HICP", "url": "https://ec.europa.eu/eurostat/web/hicp", "soort": "officieel" },
+      { "naam": "Nationale Bank van België", "url": "https://www.nbb.be/nl/statistieken", "soort": "officieel" },
+      { "naam": "ECB economisch bulletin", "url": "https://www.ecb.europa.eu/press/economic-bulletin/html/index.nl.html", "soort": "officieel" },
+      { "naam": "OESO België", "url": "https://www.oecd.org/en/topics/sub-issues/economic-surveys.html", "soort": "informatief" },
+      { "naam": "Securex spilindex", "url": "https://www.securex.be/nl/lex4you/werkgever/nieuws", "soort": "informatief" }
+    ]
+  },
+  "staatsschuld": {
+    "naam": "Staatsschuld en begroting",
+    "agent": "schuld-wachter",
+    "ritme": "per kwartaal",
+    "wat": "schuldratio, tekort, rentelasten, uitgiften van de schatkist",
+    "bronnen": [
+      { "naam": "Eurostat overheidsschuld", "url": "https://ec.europa.eu/eurostat/statistics-explained/index.php?title=Government_finance_statistics", "soort": "officieel" },
+      { "naam": "Federaal Agentschap van de Schuld", "url": "https://www.debtagency.be/nl", "soort": "officieel" },
+      { "naam": "Raad van de Europese Unie", "url": "https://www.consilium.europa.eu/nl/policies/economic-governance/", "soort": "officieel" },
+      { "naam": "Kamer van Volksvertegenwoordigers", "url": "https://www.dekamer.be/kvvcr/index.cfm", "soort": "officieel" },
+      { "naam": "KBC economie", "url": "https://www.kbc.com/nl/economics.html", "soort": "informatief" }
+    ]
+  },
+  "fiscaliteit": {
+    "naam": "Fiscaliteit en belastingen",
+    "agent": "fiscus-wachter",
+    "ritme": "maandelijks",
+    "wat": "tarieven, vrijstellingen, meerwaardebelasting, TOB, vennootschapsbelasting",
+    "bronnen": [
+      { "naam": "FOD Financiën", "url": "https://finance.belgium.be/nl/particulieren", "soort": "officieel" },
+      { "naam": "FSMA", "url": "https://www.fsma.be/nl/beleggingsproducten", "soort": "officieel" },
+      { "naam": "Wikifin belastingen", "url": "https://www.wikifin.be/nl", "soort": "informatief" },
+      { "naam": "Vlaamse Federatie van Beleggers", "url": "https://www.vfb.be/", "soort": "informatief" },
+      { "naam": "Test-Aankoop beleggen", "url": "https://www.test-aankoop.be/invest", "soort": "informatief" }
+    ]
+  },
+  "politiek": {
+    "naam": "Politiek en beleid",
+    "agent": "beleid-wachter",
+    "ritme": "dagelijks",
+    "wat": "begroting, hervormingen, fiscale debatten, Europese beslissingen",
+    "bronnen": [
+      { "naam": "De Tijd economie", "url": "https://www.tijd.be/ondernemen.html", "soort": "media" },
+      { "naam": "VRT NWS economie", "url": "https://www.vrt.be/vrtnws/nl/economie/", "soort": "media" },
+      { "naam": "Belga", "url": "https://www.belganewsagency.eu/", "soort": "media" },
+      { "naam": "Europese Commissie begroting", "url": "https://economy-finance.ec.europa.eu/economic-surveillance-eu-economies/belgium_en", "soort": "officieel" }
+    ]
+  },
+  "markten": {
+    "naam": "Markten en kosten",
+    "agent": "markt-wachter",
+    "ritme": "wekelijks",
+    "wat": "indexen, TER's, beurstaks, obligatierentes, goud, spreiding",
+    "bronnen": [
+      { "naam": "justETF", "url": "https://www.justetf.com/en/etf-profile.html?isin=IE00B3RBWM25", "soort": "informatief" },
+      { "naam": "Curvo", "url": "https://curvo.eu/nl", "soort": "informatief" },
+      { "naam": "Morningstar België", "url": "https://www.morningstar.be/be/", "soort": "informatief" },
+      { "naam": "Vanguard fondsfiche", "url": "https://www.nl.vanguard/professional/product/etf/equity/9679/ftse-all-world-ucits-etf-usd-accumulating", "soort": "informatief" },
+      { "naam": "ECB rentetarieven", "url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/key_ecb_interest_rates/html/index.en.html", "soort": "officieel" }
+    ]
+  },
+  "energie": {
+    "naam": "Energie en grondstoffen",
+    "agent": "grondstof-wachter",
+    "ritme": "maandelijks",
+    "wat": "gas, elektriciteit, olie, goud, grondstoffen en de impact op de koopkracht",
+    "bronnen": [
+      { "naam": "Statbel energieprijzen", "url": "https://statbel.fgov.be/nl/themas/consumer-prices/consumer-price-index", "soort": "officieel" },
+      { "naam": "Eurostat energie", "url": "https://ec.europa.eu/eurostat/statistics-explained/index.php?title=Energy_statistics_-_an_overview", "soort": "officieel" },
+      { "naam": "CREG", "url": "https://www.creg.be/nl", "soort": "officieel" },
+      { "naam": "VREG", "url": "https://www.vreg.be/nl", "soort": "officieel" }
+    ]
+  }
+}

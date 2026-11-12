@@ -1,0 +1,264 @@
+/* Voorbereidingsketen (voorbereidingsketen.jsx).
+   Rustig en Apple-achtig: één kaart, een dunne lijn die de zeven stappen verbindt, haarlijnen in plaats
+   van dozen in dozen, kleur alleen waar ze iets betekent. Er is bewust geen groen of vinkje: aanwezig is
+   blauwig-neutraal, leeg is gestippeld, onbekend is amber. De stand staat altijd ook in woorden.
+   Alleen eigen selectors (.voorbereidingsketen, .vk-…) en de bestaande tokens uit styles.css, dus beide
+   thema's kleuren vanzelf mee. De lege staat gebruikt de bestaande .leeg-melding en .knop. */
+
+/* Inklapbare toegang houdt de eerste aanblik rustig; de keten wordt pas
+   uitgeklapt wanneer iemand een dagdeel verder wil uitwerken. */
+.vk-overzicht { margin: 16px 0; }
+.vk-overzicht > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 13px 16px;
+  border: 1px solid var(--lijn);
+  border-radius: var(--straal);
+  background: var(--kaart);
+  color: var(--tekst-1);
+  cursor: pointer;
+  list-style: none;
+}
+.vk-overzicht > summary::-webkit-details-marker { display: none; }
+.vk-overzicht > summary::before { content: '›'; color: var(--accent-ink); font-size: var(--tekst-17); }
+.vk-overzicht[open] > summary::before { transform: rotate(90deg); }
+.vk-overzicht > summary span { color: var(--tekst-2); font-size: var(--tekst-12); line-height: 1.5; }
+.vk-overzicht > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.vk-overzicht[open] > .voorbereidingsketen { margin-top: 8px; }
+
+.voorbereidingsketen {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px 18px 14px;
+  background: var(--kaart);
+  color: var(--tekst-1);
+  border: 1px solid var(--lijn);
+  border-radius: var(--straal);
+  font-size: var(--tekst-13);
+  letter-spacing: var(--track-13);
+  line-height: 1.45;
+}
+.voorbereidingsketen p { margin: 0; }
+.voorbereidingsketen[aria-busy='true'] { cursor: progress; }
+
+/* ---------------------------------------------------------------- kop */
+
+.vk-hoofd { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px 12px; }
+.vk-h { margin: 0; font-size: var(--tekst-15); font-weight: 600; letter-spacing: var(--track-15); }
+.vk-dagdeel { min-width: 0; color: var(--tekst-2); overflow-wrap: anywhere; }
+.vk-dagdeel-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 28px;
+  padding: 0 4px 0 8px;
+  margin-right: -4px;
+  border-radius: 8px;
+  color: var(--accent-ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+.vk-dagdeel-link:hover { background: var(--hover); }
+
+/* ---------------------------------------------------------------- de keten */
+
+.vk-keten { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.vk-stap {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  column-gap: 12px;
+  padding-bottom: 14px;
+}
+.vk-stap:last-child { padding-bottom: 0; }
+/* De lijn naar de volgende stap: een werkwijze, geen meter. Ze vult nooit en kleurt nooit mee. */
+.vk-stap::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 26px;
+  bottom: -2px;
+  width: 1px;
+  background: var(--lijn-stevig);
+}
+.vk-stap:last-child::before { display: none; }
+
+.vk-nr {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--lijn-stevig);
+  border-radius: 50%;
+  background: var(--kaart);
+  color: var(--tekst-3);
+  font-size: var(--tekst-11);
+  font-weight: 600;
+  letter-spacing: var(--track-11);
+  font-variant-numeric: tabular-nums;
+}
+.vk-stap[data-stand='aanwezig'] .vk-nr { border-color: var(--accent-ring); background: var(--accent-zacht); color: var(--accent-ink); }
+.vk-stap[data-stand='leeg'] .vk-nr { border-style: dashed; border-color: var(--rand); }
+.vk-stap[data-stand='onbekend'] .vk-nr { border-style: dotted; border-color: var(--concept); background: var(--concept-bg); color: var(--concept); }
+
+.vk-inhoud { min-width: 0; }
+.vk-kop { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-height: 22px; }
+.vk-naam { font-weight: 600; }
+.vk-stand {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--leeg-bg);
+  color: var(--leeg);
+  font-size: var(--tekst-12);
+  font-weight: 600;
+  letter-spacing: var(--track-12);
+  line-height: 1;
+  white-space: nowrap;
+}
+.vk-stand[data-stand='aanwezig'] { background: var(--accent-zacht); color: var(--accent-ink); }
+.vk-stand[data-stand='onbekend'] { background: var(--concept-bg); color: var(--concept); }
+
+.vk-doel,
+.vk-melding { font-size: var(--tekst-12); letter-spacing: var(--track-12); }
+.vk-doel { color: var(--tekst-3); }
+.vk-melding { margin-top: 4px; color: var(--tekst-2); }
+
+/* Platte tekst: niets wordt opgemaakt, lange woorden breken. */
+.vk-stelling {
+  margin: 6px 0 0;
+  padding: 7px 11px;
+  border-left: 3px solid var(--rand);
+  border-radius: 3px 8px 8px 3px;
+  background: var(--vul-sterk);
+  color: var(--tekst-1);
+  overflow-wrap: anywhere;
+}
+
+/* ---------------------------------------------------------------- doorkliks */
+
+.vk-items { display: flex; flex-direction: column; gap: 1px; margin: 6px 0 0; padding: 0; list-style: none; }
+.vk-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 4px 8px;
+  margin: 0 -8px;
+  border-radius: 8px;
+  color: var(--tekst-1);
+  text-decoration: none;
+}
+.vk-link:hover { background: var(--hover); }
+.vk-link:active { background: var(--actief-vulling); }
+.vk-icoon { flex-shrink: 0; color: var(--tekst-3); }
+.vk-titel { flex: 1 1 8rem; min-width: 0; overflow-wrap: anywhere; }
+.vk-meta {
+  flex: 0 1 auto;
+  color: var(--tekst-3);
+  font-size: var(--tekst-12);
+  letter-spacing: var(--track-12);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.vk-pijl { flex-shrink: 0; color: var(--tekst-3); }
+
+.vk-tekstlink {
+  border-radius: 3px;
+  color: var(--accent-ink);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+.vk-tekstlink:hover { text-decoration-thickness: 2px; }
+
+.vk-meer { margin-top: 2px; }
+.vk-meer > summary,
+.vk-telt > summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 8px;
+  margin-left: -8px;
+  border-radius: 8px;
+  color: var(--accent-ink);
+  font-size: var(--tekst-12);
+  font-weight: 600;
+  letter-spacing: var(--track-12);
+  list-style: none;
+  cursor: pointer;
+}
+.vk-meer > summary::-webkit-details-marker,
+.vk-telt > summary::-webkit-details-marker { display: none; }
+.vk-meer > summary::before,
+.vk-telt > summary::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  margin-right: 8px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+}
+.vk-meer[open] > summary::before,
+.vk-telt[open] > summary::before { transform: rotate(45deg); }
+.vk-meer > summary:hover,
+.vk-telt > summary:hover { background: var(--hover); }
+
+/* ---------------------------------------------------------------- voet */
+
+.vk-voet {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--lijn);
+  color: var(--tekst-2);
+  font-size: var(--tekst-12);
+  letter-spacing: var(--track-12);
+  line-height: 1.5;
+}
+.vk-voet svg { flex-shrink: 0; margin-top: 2px; color: var(--tekst-3); }
+.vk-telt { margin-top: -6px; }
+.vk-telt dl { display: grid; gap: 8px; margin: 4px 0 0; }
+.vk-telt dt { font-size: var(--tekst-12); font-weight: 600; letter-spacing: var(--track-12); }
+.vk-telt dd { margin: 2px 0 0; color: var(--tekst-2); font-size: var(--tekst-12); letter-spacing: var(--track-12); line-height: 1.5; }
+
+/* ---------------------------------------------------------------- toegankelijkheid */
+
+.vk-dagdeel-link:focus-visible,
+.vk-link:focus-visible,
+.vk-tekstlink:focus-visible,
+.vk-meer > summary:focus-visible,
+.vk-telt > summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .vk-link,
+  .vk-dagdeel-link,
+  .vk-meer > summary,
+  .vk-telt > summary { transition: background-color var(--snel) var(--veer); }
+  .vk-pijl,
+  .vk-meer > summary::before,
+  .vk-telt > summary::before { transition: transform var(--snel) var(--veer); }
+  .vk-link:hover .vk-pijl { transform: translateX(2px); }
+}
+
+/* Hoog contrast: kleur valt weg, dus de stand houdt zijn rand en de lijn blijft zichtbaar. */
+@media (forced-colors: active) {
+  .vk-nr,
+  .vk-stand { border: 1px solid CanvasText; }
+  .vk-stap::before { background: CanvasText; }
+  .vk-stelling { border-left-color: CanvasText; }
+}

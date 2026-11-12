@@ -1,0 +1,134 @@
+[
+  {
+    "domein": "macro",
+    "agent": "macro-wachter",
+    "bron_naam": "VRT NWS",
+    "bron_url": "https://www.vrt.be/vrtnws/nl/2026/10/29/energieprijzen-doen-inflatie-naar-5-26-procent-stijgen",
+    "titel": "Inflatie oktober 2026",
+    "zin": "De inflatie is in oktober 2026 naar 5,26 procent gestegen, het hoogste niveau in ruim drie jaar; de stijging komt vooral van de energieprijzen.",
+    "getal": "5.26",
+    "eenheid": "procent",
+    "bron_datum": "2026-10-29"
+  },
+  {
+    "domein": "macro",
+    "agent": "macro-wachter",
+    "bron_naam": "KMO Partners",
+    "bron_url": "https://www.kmo.partners/2026/10/29/inflatie-oktober-2026-5-26-procent-energie-spilindex/",
+    "titel": "Van 4,69 naar 5,26 procent",
+    "zin": "De Belgische inflatie steeg in oktober 2026 naar 5,26 procent, tegen 4,69 procent in september.",
+    "getal": "4.69",
+    "eenheid": "procent",
+    "bron_datum": "2026-10-29"
+  },
+  {
+    "domein": "macro",
+    "agent": "macro-wachter",
+    "bron_naam": "Europese Centrale Bank",
+    "bron_url": "https://www.ecb.europa.eu/press/pr/date/2026/html/ecb.mp261029~9a493adf17.nl.html",
+    "titel": "Monetairbeleidsbeslissingen 29 oktober 2026",
+    "zin": "Op 29 oktober 2026 heeft de Raad van Bestuur besloten de drie basisrentetarieven van de ECB ongewijzigd te laten.",
+    "getal": "",
+    "eenheid": "",
+    "bron_datum": "2026-10-29"
+  },
+  {
+    "domein": "macro",
+    "agent": "macro-wachter",
+    "bron_naam": "Securex",
+    "bron_url": "https://www.securex.be/nl/lex4you/werkgever/nieuws/de-spilindex-werd-overschreden-in-juni-2026-f658081bc38e582f3b790b3f0aa81fd4",
+    "titel": "Spilindex overschreden in juni 2026",
+    "zin": "Hoewel de inflatie daalde van 4,08 naar 3,40 procent, werd de spilindex van 100,28 in juni 2026 overschreden, waardoor uitkeringen en ambtenarenlonen stijgen.",
+    "getal": "100.28",
+    "eenheid": "index",
+    "bron_datum": "2026-06-30"
+  },
+  {
+    "domein": "staatsschuld",
+    "agent": "schuld-wachter",
+    "bron_naam": "Raad van de Europese Unie",
+    "bron_url": "https://data.consilium.europa.eu/doc/document/ST-10116-2026-ADD-1/nl/pdf",
+    "titel": "Overheidstekort en schuld België",
+    "zin": "Het overheidstekort is in 2025 gestegen tot 5,2 procent van het bbp en blijft in 2026 naar verwachting stabiel op 5,2 procent, terwijl de overheidsschuld blijft stijgen.",
+    "getal": "5.2",
+    "eenheid": "procent",
+    "bron_datum": "2026-06-20"
+  },
+  {
+    "domein": "staatsschuld",
+    "agent": "schuld-wachter",
+    "bron_naam": "Kamer van Volksvertegenwoordigers",
+    "bron_url": "https://www.dekamer.be/doc/FLWB/pdf/56/1468/56K1468001.pdf",
+    "titel": "Monitoringcomité maart 2026",
+    "zin": "Het Monitoringcomité raamde het tekort van entiteit I voor 2026 op 25.144 miljoen euro, of 3,8 procent van het bbp.",
+    "getal": "25144",
+    "eenheid": "miljoen euro",
+    "bron_datum": "2026-03-31"
+  },
+  {
+    "domein": "fiscaliteit",
+    "agent": "fiscus-wachter",
+    "bron_naam": "FOD Financiën",
+    "bron_url": "https://fin.belgium.be/nl/particulieren/belastingaangifte/inkomsten/meerwaardebelasting",
+    "titel": "Meerwaardebelasting",
+    "zin": "Verkoopt u vanaf 1 januari 2026 financiële activa met winst, dan betaalt u meestal een meerwaardebelasting van 10 procent, met een jaarlijkse vrijstelling per belastingplichtige.",
+    "getal": "10",
+    "eenheid": "procent",
+    "bron_datum": "2026-01-01"
+  },
+  {
+    "domein": "fiscaliteit",
+    "agent": "fiscus-wachter",
+    "bron_naam": "Belfius",
+    "bron_url": "https://www.belfius.be/retail/nl/producten/sparen-beleggen/info-publicaties/meerwaardebelasting/index.aspx",
+    "titel": "Vrijstelling en wetgeving",
+    "zin": "De jaarlijkse vrijstelling bedraagt 10.000 euro per belastingplichtige voor 2026, geïndexeerd; de wet werd op 2 april 2026 aangenomen en werkt retroactief vanaf 1 januari 2026.",
+    "getal": "10000",
+    "eenheid": "euro",
+    "bron_datum": "2026-04-02"
+  },
+  {
+    "domein": "fiscaliteit",
+    "agent": "fiscus-wachter",
+    "bron_naam": "Vlaamse Federatie van Beleggers",
+    "bron_url": "https://www.vfb.be/vfb/tob-of-taks-op-beursoperaties-of-beurstaks",
+    "titel": "Beurstaks: drie tarieven",
+    "zin": "De beurstaks kent drie tarieven: 0,12 procent met een maximum van 1.300 euro, 0,35 procent met een maximum van 1.600 euro, en 1,32 procent met een maximum van 4.000 euro per verrichting.",
+    "getal": "1.32",
+    "eenheid": "procent",
+    "bron_datum": "2026-01-01"
+  },
+  {
+    "domein": "markten",
+    "agent": "markt-wachter",
+    "bron_naam": "Vanguard",
+    "bron_url": "https://www.nl.vanguard/professional/product/etf/equity/9679/ftse-all-world-ucits-etf-usd-accumulating",
+    "titel": "FTSE All-World (VWCE)",
+    "zin": "De Vanguard FTSE All-World UCITS ETF (VWCE) heeft een TER van 0,14 procent en volgt 3.821 aandelen, afgesloten op 30 september 2026.",
+    "getal": "0.14",
+    "eenheid": "procent",
+    "bron_datum": "2026-11-11"
+  },
+  {
+    "domein": "energie",
+    "agent": "grondstof-wachter",
+    "bron_naam": "VRT NWS",
+    "bron_url": "https://www.vrt.be/vrtnws/nl/2026/10/29/energieprijzen-doen-inflatie-naar-5-26-procent-stijgen",
+    "titel": "Energie duwt de inflatie",
+    "zin": "De sterke stijging van de energieprijzen duwt de inflatie in oktober 2026 naar 5,26 procent en raakt zo de koopkracht van elk huishouden.",
+    "getal": "5.26",
+    "eenheid": "procent",
+    "bron_datum": "2026-10-29"
+  },
+  {
+    "domein": "politiek",
+    "agent": "beleid-wachter",
+    "bron_naam": "Liantis",
+    "bron_url": "https://www.liantis.be/nl/nieuws/spilindex-overschreden-juni-wat-betekent-dit-voor-jou",
+    "titel": "Spilindex en indexering",
+    "zin": "In juni 2026 werd de spilindex overschreden, met rechtstreekse gevolgen voor de socialezekerheidsuitkeringen, de pensioenen en de lonen van ambtenaren.",
+    "getal": "",
+    "eenheid": "",
+    "bron_datum": "2026-06-30"
+  }
+]

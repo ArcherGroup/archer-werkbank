@@ -1,0 +1,71 @@
+/* Actua: de signalen van de wachters, per domein. */
+
+.actua-uitleg { max-width: 74ch; color: var(--tekst-2); font-size: var(--tekst-13); line-height: 1.6; margin: 0 0 18px; }
+
+.actua-filter { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 20px; }
+.actua-statussen, .actua-domeinen { display: flex; gap: 4px; padding: 3px; border: 1px solid var(--lijn); border-radius: 10px; background: var(--vul); }
+.actua-statussen button, .actua-domeinen button {
+  border: 0; background: transparent; color: var(--tekst-2); font: inherit; font-size: var(--tekst-12);
+  padding: 5px 10px; border-radius: 7px; cursor: pointer;
+}
+.actua-statussen button:hover, .actua-domeinen button:hover { color: var(--tekst-1); }
+.actua-statussen button[aria-pressed="true"], .actua-domeinen button[aria-pressed="true"] { background: var(--kaart); color: var(--tekst-1); box-shadow: 0 1px 2px rgb(0 0 0 / .18); }
+
+.actua-groep { margin-bottom: 26px; }
+.actua-kop { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.actua-kop h2 { margin: 0; font-size: 17px; letter-spacing: -.01em; }
+.actua-agent { color: var(--tekst-3); font-size: var(--tekst-11); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.actua-tel { margin-left: auto; color: var(--tekst-3); font-size: var(--tekst-11); font-variant-numeric: tabular-nums; }
+
+.signaal {
+  padding: 13px 15px;
+  border: 1px solid var(--lijn);
+  border-radius: 12px;
+  background: var(--kaart);
+  margin-bottom: 8px;
+}
+.signaal-kop { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; margin-bottom: 6px; }
+.signaal-getal { font-size: 15px; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.signaal-bron { color: var(--tekst-2); font-size: var(--tekst-12); }
+.signaal-datum { margin-left: auto; color: var(--tekst-3); font-size: var(--tekst-11); }
+.signaal-zin { margin: 0 0 11px; font-size: var(--tekst-13); line-height: 1.55; color: var(--tekst-1); }
+.signaal-acties { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.actua-leeg { padding: 22px; border: 1px dashed var(--lijn-stevig); border-radius: 12px; text-align: center; }
+.actua-leeg h2 { margin: 0 0 6px; font-size: 16px; }
+.actua-leeg p { margin: 0; color: var(--tekst-2); font-size: var(--tekst-13); }
+.actua-voet { margin-top: 24px; color: var(--tekst-3); font-size: var(--tekst-11); line-height: 1.6; }
+.actua-voet code { font-size: 11px; }
+
+/* De wachters: wie zoekt wat, op welk ritme, en is hij nog wakker? */
+
+.actua-filosofie {
+  border: 0; background: none; padding: 0; margin: 0 0 0 2px;
+  color: var(--accent); font: inherit; font-size: inherit; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+
+.actua-wachters { margin: 0 0 18px; }
+.actua-wachters-kop { display: flex; align-items: baseline; gap: 10px; margin-bottom: 9px; }
+.actua-wachters-kop h2 { margin: 0; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--tekst-3); font-weight: 650; }
+.actua-wachters-stand { margin-left: auto; color: var(--tekst-3); font-size: var(--tekst-11); font-variant-numeric: tabular-nums; }
+
+.actua-wachter-rij { display: grid; grid-template-columns: repeat(auto-fit, minmax(178px, 1fr)); gap: 8px; }
+.wachter {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 9px 11px; border: 1px solid var(--lijn); border-radius: 11px;
+  background: var(--kaart); text-align: left; font: inherit; cursor: pointer;
+  transition: border-color 120ms var(--veer), background 120ms var(--veer);
+}
+.wachter:hover { border-color: var(--lijn-stevig); }
+.wachter.aan { border-color: var(--accent-ring); background: var(--accent-zacht); }
+.wachter-kop { display: flex; align-items: center; gap: 6px; }
+.wachter-kop b { font-size: var(--tekst-12); font-weight: 650; color: var(--tekst-1); }
+.wachter-aantal { margin-left: auto; color: var(--tekst-3); font-size: var(--tekst-11); font-variant-numeric: tabular-nums; }
+.wachter-stip { width: 7px; height: 7px; border-radius: 50%; background: var(--tekst-3); flex: none; }
+.wachter.stand-vers .wachter-stip { background: var(--groen, #4f9d6b); }
+.wachter.stand-let-op .wachter-stip { background: var(--oranje, #d09a3a); }
+.wachter.stand-verouderd .wachter-stip { background: var(--rood, #c0554f); }
+.wachter-agent { color: var(--tekst-3); font-size: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.wachter-vers { color: var(--tekst-2); font-size: var(--tekst-11); }
+.wachter-ritme { color: var(--tekst-3); font-size: 10px; }
