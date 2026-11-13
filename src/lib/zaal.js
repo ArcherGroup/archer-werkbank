@@ -1,27 +1,7 @@
-/* De zaal in cijfers.
+import { ZAAL_SNAPSHOT } from '../data/zaal-februari-2027.js'
 
-   Dit is de vroege steekproef uit de brief van dagdeel 1.3: elf van de
-   drieëntwintig deelnemers vulden hun vermogen in, samen 2,33 miljoen euro.
-   Het is geen representatief zaalprofiel; dat staat er ook bij. De verdeling
-   komt uit dezelfde brief en telt op tot 99,5 procent, want de bron rondt af. */
-
-export const ZAAL = {
-  bron: 'brief 1.3, vroege onboarding, 10 november 2026',
-  steekproef: { ingevuld: 11, totaal: 23 },
-  som: 2336538,
-  verdeling: [
-    { naam: 'Cash', deel: 51 },
-    { naam: 'Goud en grondstoffen', deel: 12 },
-    { naam: 'Losse aandelen', deel: 11 },
-    { naam: 'Pensioensparen', deel: 8 },
-    { naam: 'Tweede pijler', deel: 8 },
-    { naam: 'Crypto', deel: 3 },
-    { naam: 'VAPZ', deel: 3 },
-    { naam: 'Tak 21 en 23', deel: 2.5 },
-    { naam: "ETF's", deel: 1 },
-    { naam: 'Private equity', deel: 0 },
-  ],
-}
+// Een gedateerde, geanonimiseerde snapshot. De browser leest geen Invest-gebruikersrijen.
+export const ZAAL = ZAAL_SNAPSHOT
 
 /* Het gemiddelde van wie zijn vermogen invulde, niet van de hele zaal. */
 export function gemiddeldeVanZaal(zaal = ZAAL) {

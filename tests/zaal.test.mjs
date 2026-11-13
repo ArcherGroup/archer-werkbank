@@ -3,13 +3,16 @@ import assert from 'node:assert/strict'
 import { ZAAL, gemiddeldeVanZaal, somVanVerdeling, euro, taartStukken, donutPad } from '../src/lib/zaal.js'
 
 test('het gemiddelde van de zaal is de som gedeeld door wie invulde', () => {
-  assert.equal(gemiddeldeVanZaal(), 212413)
+  assert.equal(gemiddeldeVanZaal(), 262548)
+  assert.equal(ZAAL.project, 'pgajmjeicrwxthkwwiei')
+  assert.deepEqual(ZAAL.steekproef, { ingevuld: 10, totaal: 24 })
+  assert.equal(ZAAL.som, 2625482.31)
   assert.equal(gemiddeldeVanZaal({ steekproef: { ingevuld: 0 }, som: 100 }), null)
   assert.equal(gemiddeldeVanZaal({}), null)
 })
 
 test('de verdeling telt op tot wat de bron zegt, niet tot honderd', () => {
-  assert.equal(somVanVerdeling(ZAAL.verdeling), 99.5)
+  assert.ok(Math.abs(somVanVerdeling(ZAAL.verdeling) - 100.1) < 0.00001)
   assert.equal(somVanVerdeling([]), 0)
 })
 

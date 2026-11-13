@@ -28,11 +28,19 @@ import urllib.request
 from datetime import date, datetime
 from pathlib import Path
 
-SB_URL = "https://thbjzrdogebyhbkkbxzp.supabase.co"
-SB_KEY = os.environ.get("WERKBANK_SLEUTEL", "sb_publishable_gJpTKrSOJ0gjPfFIEW9mDA_w5l8eLT2")
+HIER = Path(__file__).resolve().parent
+PROJECTEN = json.loads((HIER.parents[1] / 'config' / 'projecten.json').read_text())
+SB_URL = PROJECTEN['werkbank']['url']
+_lokaal = {}
+_env_pad = HIER.parents[1] / '.env.local'
+if _env_pad.is_file():
+    for _regel in _env_pad.read_text().splitlines():
+        if '=' in _regel and not _regel.lstrip().startswith('#'):
+            _naam, _waarde = _regel.split('=', 1)
+            _lokaal[_naam.strip()] = _waarde.strip().strip('\"').strip("'")
+SB_KEY = os.environ.get('WERKBANK_SLEUTEL') or _lokaal.get('WERKBANK_SLEUTEL', '')
 LEZER = SB_URL + "/functions/v1/lees-bron"
 REST = SB_URL + "/rest/v1/actualiteit"
-HIER = Path(__file__).resolve().parent
 
 MAANDEN = ("januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december"
            "|january|february|march|april|may|june|july|august|september|october|november|december")

@@ -1,0 +1,13 @@
+{
+  "werkbank": {
+    "project": "znqcljyroirxvvllhygu",
+    "url": "https://znqcljyroirxvvllhygu.supabase.co",
+    "schema": "werkbank"
+  },
+  "invest": {
+    "project": "pgajmjeicrwxthkwwiei",
+    "url": "https://pgajmjeicrwxthkwwiei.supabase.co",
+    "alleenLezen": true,
+    "editie": "a47bafc8-7619-4161-904a-ebc8e62f468b"
+  }
+}

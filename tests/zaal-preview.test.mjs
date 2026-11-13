@@ -16,10 +16,10 @@ const h = (extra = {}) => renderToStaticMarkup(React.createElement(ZaalPreview, 
 
 test('het gemiddelde van de zaal staat er met de steekproef erbij', () => {
   const uit = h()
-  assert.match(uit, /€ 212\.413/)
-  assert.match(uit, /gemiddeld ingevuld vermogen/)
-  assert.match(uit, /11<\/b> van 23 deelnemers/)
-  assert.match(uit, /€ 2\.336\.538/)
+  assert.match(uit, /€ 262\.548/)
+  assert.match(uit, /gemiddeld ingevuld financieel vermogen/)
+  assert.match(uit, /10<\/b> van 24 deelnemers/)
+  assert.match(uit, /€ 2\.625\.482/)
 })
 
 test('de verdeling is een taart met een legende en blijft standaard dicht', () => {
@@ -30,18 +30,20 @@ test('de verdeling is een taart met een legende en blijft standaard dicht', () =
   assert.match(open, /Verberg de verdeling/)
   assert.match(open, /zaal-legende/)
   assert.match(open, /Cash/)
-  assert.match(open, /51%/)
+  assert.match(open, /53,3%/)
   assert.match(open, /ETF&#x27;s/)
 })
 
 test('de bron en de beperking staan er letterlijk bij', () => {
   const uit = h()
-  assert.match(uit, /brief 1\.3, vroege onboarding, 10 november 2026/)
+  assert.match(uit, /Invest App V0, februari 2027, 13 november 2026/)
   assert.match(uit, /vroege steekproef/)
-  assert.match(uit, /99,5 procent/)
+  assert.match(uit, /100,1 procent/)
+  assert.match(uit, /exclusief vastgoed en ondernemingswaarde/)
+  assert.match(uit, /zonder beheerders of mentoren/)
 })
 
 test('de taart heeft voor elke post met een stuk een pad', () => {
   const uit = h({ compact: false })
-  assert.equal((uit.match(/<path /g) || []).length, 18)
+  assert.equal((uit.match(/<path /g) || []).length, 20)
 })

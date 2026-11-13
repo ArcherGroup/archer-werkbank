@@ -19,7 +19,7 @@ export function ZaalPreview({ compact = true }) {
           <div className="wb-eyebrow">De zaal vandaag</div>
           <h2 id="zaal-titel">
             {gemiddelde ? euro(gemiddelde) : 'nog geen cijfer'}
-            <span> gemiddeld ingevuld vermogen</span>
+            <span> gemiddeld ingevuld financieel vermogen</span>
           </h2>
         </div>
         <div className="zaal-mini" aria-hidden="true">
@@ -60,9 +60,9 @@ export function ZaalPreview({ compact = true }) {
       )}
 
       <p className="zaal-bron">
-        Bron: {ZAAL.bron}. Alleen aggregaten, drempel tien deelnemers. Dit is een vroege steekproef en
-        geen representatief zaalprofiel; de verdeling telt op tot {som.toLocaleString('nl-BE')} procent omdat
-        de bron afrondt.
+        Bron: {ZAAL.bron}. {ZAAL.afbakening} Alleen aggregaten, drempel tien deelnemers. Dit is een vroege steekproef en
+        geen representatief zaalprofiel; de verdeling telt op tot {som.toLocaleString('nl-BE')} procent door
+        afronding op één decimaal.
       </p>
     </section>
   )
