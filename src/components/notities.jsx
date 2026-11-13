@@ -55,7 +55,7 @@ export function Notities({ doelType, doelId, auteur, notities = [], onWijzig, co
   useEffect(() => {
     if (geselecteerdId == null || vorigeSelectie.current === String(geselecteerdId)) return
     const el = [...(lijstRef.current?.querySelectorAll('[data-thread-key]') || [])].find((n) => n.dataset.threadKey === String(geselecteerdId) || n.dataset.threadId === String(geselecteerdId))
-    const paneel = el?.closest('.inspector')
+    const paneel = el?.closest('.doc-inspector-panel') || el?.closest('.inspector')
     if (el && paneel) { paneel.scrollTop += el.getBoundingClientRect().top - paneel.getBoundingClientRect().top - 20; vorigeSelectie.current = String(geselecteerdId) }
   }, [geselecteerdId, notities])
 

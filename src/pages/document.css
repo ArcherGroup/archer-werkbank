@@ -6,3 +6,26 @@
 .doc-gesprek-keuze.geselecteerd { outline: 2px solid var(--accent-ring); outline-offset: 4px; }
 .doc-comment-bewaring { color: var(--tekst-2); font-size: .75rem; line-height: 1.5; margin: .4rem 0; }
 @media (max-width: 680px) { .doc-selectie-actie { min-height: 44px; } }
+.doc-focus-inspector { flex-direction: column; overflow: hidden; padding: 0; }
+@media (min-width: 1101px) { .doc-inspector.doc-focus-inspector { display: flex; } }
+.doc-inspector.doc-focus-inspector.open { display: flex; }
+.doc-inspector-tabs { display: flex; flex: 0 0 auto; gap: .25rem; padding: .75rem; border-bottom: 1px solid var(--lijn); }
+.doc-inspector-tabs button { flex: 1; min-height: 38px; border: 0; border-radius: .5rem; background: transparent; color: var(--tekst-2); font: inherit; font-size: .8rem; cursor: pointer; }
+.doc-inspector-tabs button[aria-selected="true"] { background: var(--accent-zacht); color: var(--accent); font-weight: 650; }
+.doc-inspector-tabs button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.doc-inspector-tabs span { font-size: .7rem; opacity: .8; margin-left: .25rem; }
+.doc-inspector-panel { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 1rem; }
+.doc-inspector-panel[hidden] { display: none; }
+.doc-bronnen-titel { font-size: .95rem; margin: 0 0 .5rem; }
+.doc-bronnen-zoek { width: 100%; margin: .5rem 0 1rem; }
+.doc-bronnen-lijst { display: grid; gap: .5rem; }
+.doc-bron-kaart { width: 100%; text-align: left; padding: .75rem; border: 1px solid var(--lijn); border-radius: .6rem; background: var(--kaart); color: var(--tekst); font: inherit; cursor: pointer; }
+.doc-bron-kaart:hover { border-color: var(--accent); }
+.doc-bron-kaart strong, .doc-bron-kaart span, .doc-bron-kaart small { display: block; overflow-wrap: anywhere; }
+.doc-bron-kaart strong { font-size: .8rem; line-height: 1.45; }
+.doc-bron-kaart span { color: var(--tekst-2); font-size: .72rem; margin-top: .25rem; }
+.doc-bron-kaart small { color: var(--tekst-3); font-size: .68rem; margin-top: .5rem; }
+.doc-comment-plek { border-left: 2px solid var(--accent); background: var(--accent-zacht); border-radius: .4rem; padding: .6rem .75rem; margin: .5rem 0 1rem; }
+.doc-comment-plek p { color: var(--tekst-2); font-size: .75rem; line-height: 1.5; margin: 0; }
+.doc-comment-plekken { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .5rem; }
+.doc-comment-plekken button[aria-pressed="true"] { color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }

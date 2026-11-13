@@ -19,6 +19,7 @@ import { beslissingenBijDocument } from '../lib/beslissing-review'
 import { inhoudVoorDownload, voegInterneLinkIn, ankerUitSelectie } from '../lib/document'
 import { markeerAnkers, ruimAnkersOp, bouwTekstIndex } from '../lib/comment-markers'
 import { voegCommentsSamen } from '../lib/comment-samenvoegen'
+import { zoekCommentPassages } from '../lib/comment-navigatie'
 import { piekDoel, wisDoel, telGesprekken, telOpen } from '../lib/comments'
 import { leesSecties, plekVanKlik } from '../lib/secties'
 import { WerkboekBalk } from '../components/werkboek-balk'
@@ -42,6 +43,8 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
   const [historiek, setHistoriek] = useState([])
   const [notities, setNotities] = useState([])
   const [notitiesOpen, setNotitiesOpen] = useState(false)
+  const [inspectorTab, setInspectorTab] = useState('comments')
+  const [bronZoek, setBronZoek] = useState('')
   const notitiesKnopRef = useRef(null)
   const notitiesPaneelRef = useRef(null)
   const [agentIngelogd, setAgentIngelogd] = useState(false)
@@ -61,6 +64,10 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
   const [lichaamTekst, setLichaamTekst] = useState(null)
   const [gesprekSprong, setGesprekSprong] = useState(0)
   const laatsteSprong = useRef(null)
+  const [commentPlek, setCommentPlek] = useState(null)
+  const historieVoorAnker = useRef(null)
+  const scrollFrame = useRef(0)
+  useEffect(() => () => { if (scrollFrame.current) cancelAnimationFrame(scrollFrame.current) }, [])
   const [focusTeller, setFocusTeller] = useState(0) // elke verhoging zet de focus weer op het invoerveld
   const artikelRef = useRef(null)
   // Wat nog niet verstuurd is, staat er toch: het gesprek mag niet doodvallen.
@@ -158,6 +165,8 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
   // chip uit de comments-balk of een niet (meer) gevonden anker komt, het
   // gesprek zelf blijft bereikbaar; stil falen bestaat hier niet.
   const openGesprek = useCallback((id) => {
+    setInspectorTab('comments')
+    setCommentPlek(null)
     setGeselecteerdId(id == null ? null : String(id))
     setGesprekSprong((t) => t + 1)
     setNotitiesOpen(true)
@@ -196,6 +205,7 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
      De pagina scrolt in .hoofd, niet in het venster; zelfde berekening, animatie
      in plaats van een sprong, en meteen naar de eindpositie bij reduced motion. */
   const scrollNaarElement = useCallback((el, { marge = 26 } = {}) => {
+    if (scrollFrame.current) cancelAnimationFrame(scrollFrame.current)
     if (!el) return false
     const hoofd = el.closest('.hoofd')
     if (!hoofd) { el.scrollIntoView?.({ block: 'center' }); return true }
@@ -203,16 +213,16 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
     const doel = Math.max(0, el.getBoundingClientRect().top - hoofd.getBoundingClientRect().top + van - marge)
     const ver = doel - van
     if (Math.abs(ver) < 2) return true
-    const zacht = !window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+    const zacht = !document.hidden && !window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
     if (!zacht) { hoofd.scrollTop = doel; return true }
     const start = performance.now()
     const duur = Math.min(560, 180 + Math.abs(ver) * 0.35)
     const stap = (t) => {
       const p = Math.min(1, (t - start) / duur)
       hoofd.scrollTop = van + ver * (1 - Math.pow(1 - p, 3))
-      if (p < 1) requestAnimationFrame(stap)
+      if (p < 1) scrollFrame.current = requestAnimationFrame(stap)
     }
-    requestAnimationFrame(stap)
+    scrollFrame.current = requestAnimationFrame(stap)
     return true
   }, [])
 
@@ -221,6 +231,16 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
     el.classList.add('werkbank-flits')
     setTimeout(() => el.classList.remove('werkbank-flits'), 1900)
   }, [])
+
+  const springNaarCommentPlek = useCallback((plek) => {
+    const index = bouwTekstIndex(artikelRef.current)
+    const knoop = index.knopen.find((k) => k.start <= plek.start && k.end > plek.start)
+    const el = knoop?.node.parentElement?.closest('p, li, blockquote, td, h2, h3') || knoop?.node.parentElement
+    if (!el) return false
+    scrollNaarElement(el, { marge: 100 })
+    flitsElement(el)
+    return true
+  }, [scrollNaarElement, flitsElement])
 
   const springNaarSectie = useCallback((sectie) => {
     const el = artikelRef.current?.querySelector(`#sec-${sectie?.id}`) || artikelRef.current?.querySelector(`[data-sectie="${sectie?.id}"]`)
@@ -247,29 +267,14 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
     return false
   }, [scrollNaarElement, flitsElement])
 
-  const springNaarAnker = useCallback((anker) => {
-    if (!anker) return false
-    const pin = [...(artikelRef.current?.querySelectorAll('button.comment-pin') || [])]
-      .find((p) => (p.closest('mark')?.textContent || '').includes(anker))
-    if (pin) {
-      const mark = pin.closest('mark') || pin.previousElementSibling
-      scrollNaarElement(mark || pin, { marge: 120 })
-      mark?.classList.add('comment-flits')
-      setTimeout(() => mark?.classList.remove('comment-flits'), 2600)
-      return true
-    }
-    return springNaarTekst(anker)
-  }, [scrollNaarElement, springNaarTekst])
-
   // Een citaat in het paneel aanklikken springt naar de tekst, maar sluit het
   // paneel alleen op smalle schermen (waar het paneel de tekst overlapt) —
   // op desktop blijft het gesprek gewoon open naast de tekst.
   const toonInTekst = useCallback((n) => {
     const smal = window.matchMedia?.('(max-width: 1100px)')?.matches
+    openGesprek(n.client_id || n.id)
     if (smal) sluitNotities()
-    if (!springNaarAnker(n.anker)) setAnkerFout('Passage gewijzigd of niet gevonden — het gesprek blijft hieronder bereikbaar.')
-    else setAnkerFout('')
-  }, [springNaarAnker, sluitNotities])
+  }, [openGesprek, sluitNotities])
 
   /* Waar de vorige lezer klikte: het stuk en de zin, geen pixelpositie. */
   const onthoudKlik = useCallback((e) => {
@@ -352,20 +357,38 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
   }, [bodyVoorAnkers, notitiesHier, modus, docId, openGesprek])
 
   useEffect(() => {
-    if (geselecteerdId == null) return
+    if (geselecteerdId == null || modus !== 'lees' || !artikelRef.current) return
     const n = notitiesHier.find((n) => String(n.id) === geselecteerdId || String(n.client_id || '') === geselecteerdId)
     if (!n) return
-    const sleutel = `${gesprekSprong}:${n.client_id || n.id}`
+    const sleutel = `${gesprekSprong}:${doc?.versie}:${n.client_id || n.id}`
     if (laatsteSprong.current === sleutel) return
-    const pin = [...(artikelRef.current?.querySelectorAll('button.comment-pin') || [])].find((p) => p.dataset.comment === String(n.id))
-    if (!pin) return
-    laatsteSprong.current = sleutel
-    const mark = pin.previousElementSibling
-    scrollNaarElement(mark || pin, { marge: 120 })
-    mark?.classList.add('comment-flits')
-    const timer = setTimeout(() => mark?.classList.remove('comment-flits'), 2600)
-    return () => clearTimeout(timer)
-  }, [geselecteerdId, gesprekSprong, notitiesHier, scrollNaarElement])
+    let geldig = true
+    const zoek = async () => {
+      const tekst = bouwTekstIndex(artikelRef.current).tekst
+      let uit = zoekCommentPassages(tekst, n)
+      if (!uit.plekken.length && n.anker) {
+        try {
+          const cacheKey = `${docId}:${doc?.versie}`
+          if (historieVoorAnker.current?.key !== cacheKey) {
+            historieVoorAnker.current = { key: cacheKey, promise: D.laadHistoriek(docId).then((rijen) => rijen.map((h) => {
+              const html = renderMd(splitsFrontmatter(h.inhoud || '').body).replace(/<img\b[^>]*>/gi, '')
+              const parsed = new window.DOMParser().parseFromString(html, 'text/html')
+              return bouwTekstIndex(parsed.body).tekst
+            })) }
+          }
+          const historiek = await historieVoorAnker.current.promise
+          uit = zoekCommentPassages(tekst, n, { historiek })
+        } catch { /* De onbekend-status blijft zichtbaar; geen willekeurige gok. */ }
+      }
+      if (!geldig || huidigDocId.current !== docId) return
+      laatsteSprong.current = sleutel
+      setCommentPlek({ ...uit, index: 0 })
+      setAnkerFout('')
+      if (uit.plekken.length) springNaarCommentPlek(uit.plekken[0])
+    }
+    zoek()
+    return () => { geldig = false }
+  }, [geselecteerdId, gesprekSprong, notitiesHier, docId, doc?.versie, modus, springNaarCommentPlek])
 
 
   // Vanuit de comments-balk, de walkthrough of dezelfde pagina opnieuw openen:
@@ -573,6 +596,7 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
         root: artikelRef.current, range: selectieActie.range, documentVersie: doc?.versie ?? null, sectieId: actieveSectie,
       })
       setNotitieAnker({ anker, anker_context })
+      setInspectorTab('comments')
       setAnkerFout('')
       setGeselecteerdId(null)
       setNotitiesOpen(true)
@@ -585,6 +609,7 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
 
   // De duidelijke tweede weg: een comment die niet aan een passage hangt.
   const algemeneComment = () => {
+    setInspectorTab('comments')
     setNotitieAnker(null)
     setAnkerFout('')
     setGeselecteerdId(null)
@@ -781,9 +806,26 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
         style={{ top: selectieActie.top, left: selectieActie.left }}
         onMouseDown={(e) => e.preventDefault()} onClick={plaatsCommentBijSelectie}>Comment toevoegen</button>}
 
-      <aside id="doc-notities-paneel" ref={notitiesPaneelRef} className={`inspector doc-inspector ${notitiesOpen ? 'open' : ''}`} aria-label="Comments en bronnen bij dit stuk">
+      <aside id="doc-notities-paneel" ref={notitiesPaneelRef} className={`inspector doc-inspector doc-focus-inspector ${notitiesOpen ? 'open' : ''}`} aria-label="Comments en bronnen bij dit stuk">
         <button type="button" className="knop doc-notities-sluit" onClick={sluitNotities}>Sluit comments</button>
+        <div className="doc-inspector-tabs" role="tablist" aria-label="Focus van het zijpaneel" onKeyDown={(e) => {
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return
+          e.preventDefault()
+          const tab = e.key === 'Home' ? 'comments' : e.key === 'End' ? 'bronnen' : inspectorTab === 'comments' ? 'bronnen' : 'comments'
+          setInspectorTab(tab)
+          document.getElementById(`doc-${tab}-tab`)?.focus()
+        }}>
+          <button type="button" role="tab" id="doc-comments-tab" aria-controls="doc-comments-panel" aria-selected={inspectorTab === 'comments'} tabIndex={inspectorTab === 'comments' ? 0 : -1} onClick={() => setInspectorTab('comments')}>Comments <span>{telGesprekken(notitiesHier)}</span></button>
+          <button type="button" role="tab" id="doc-bronnen-tab" aria-controls="doc-bronnen-panel" aria-selected={inspectorTab === 'bronnen'} tabIndex={inspectorTab === 'bronnen' ? 0 : -1} onClick={() => setInspectorTab('bronnen')}>Bronnen <span>{bronnenVanBlok.length}</span></button>
+        </div>
+        <section id="doc-comments-panel" className="doc-inspector-panel" role="tabpanel" aria-labelledby="doc-comments-tab" hidden={inspectorTab !== 'comments'}>
         <div className="insp-titel">Comments bij dit stuk</div>
+        {commentPlek && geselecteerdId != null && <div className="doc-comment-plek" role="status">
+          <p>{commentPlek.melding || (commentPlek.status === 'geen' ? 'Algemene comment bij dit document, zonder geselecteerde passage.' : 'Gekoppelde passage in dit stuk.')}</p>
+          {!!commentPlek.plekken.length && <div className="doc-comment-plekken">
+            {commentPlek.plekken.map((plek, i) => <button type="button" key={`${plek.start}:${plek.end}`} className="knop zacht" aria-pressed={commentPlek.index === i} onClick={() => { if (window.matchMedia?.('(max-width: 1100px)')?.matches) sluitNotities(); setCommentPlek((oud) => ({ ...oud, index: i })); springNaarCommentPlek(plek) }}>{commentPlek.plekken.length > 1 ? `Vindplaats ${i + 1}` : 'Toon passage'}</button>)}
+          </div>}
+        </div>}
         <div className="doc-comment-keuze"><button type="button" className="knop zacht" onClick={algemeneComment}>Algemene comment toevoegen</button></div>
         <p className="doc-comment-hulp">Selecteer tekst en kies Comment toevoegen. Klik op een markering of comment om het volledige gesprek te openen.</p>
         {ankerFout && <p className="veld-fout" role="alert">{ankerFout}</p>}
@@ -798,21 +840,20 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
           onAnkerWissen={(vorig) => setNotitieAnker((huidig) => huidig === vorig ? null : huidig)}
           onWijzig={() => D.laadNotities('document', doc.id).then((n) => { if (huidigDocId.current === doc.id) setNotities(n) }).catch(() => meld('Comments verversen mislukte.', { fout: true }))}
         />
-        {bronnenVanBlok.length > 0 && (
-          <>
-            <div className="insp-titel">Bronnen van dit dagdeel ({bronnenVanBlok.length})</div>
-            {bronnenVanBlok.slice(0, 12).map((b) => (
-              <button key={b.id} className="bron-rij" onClick={() => naar(`#/bron/${b.id}`)} title={b.titel || b.url}>
-                <span className={`status-stip ${b.status}`} role="img" aria-label={`Status: ${b.status}`} title={`Status: ${b.status}`} />
-                <span className="midden">
-                  <div className="t">{b.titel || b.url}</div>
-                  <div className="u">{b.url}</div>
-                </span>
-              </button>
-            ))}
-            {bronnenVanBlok.length > 12 && <div className="leeg-tekst">… en nog {bronnenVanBlok.length - 12}</div>}
-          </>
-        )}
+        </section>
+        <section id="doc-bronnen-panel" className="doc-inspector-panel" role="tabpanel" aria-labelledby="doc-bronnen-tab" hidden={inspectorTab !== 'bronnen'}>
+          <h2 className="doc-bronnen-titel">Bronnen van dit dagdeel</h2>
+          <p className="doc-comment-hulp">Raadpleeg een bron wanneer je die nodig hebt. Je gesprek en antwoord blijven in de tab Comments staan.</p>
+          <input className="doc-bronnen-zoek" aria-label="Zoek binnen de bronnen van dit dagdeel" placeholder="Zoek titel of website…" value={bronZoek} onChange={(e) => setBronZoek(e.target.value)} />
+          <div className="doc-bronnen-lijst">{bronnenVanBlok.filter((b) => `${b.titel || ''} ${b.url || ''}`.toLowerCase().includes(bronZoek.toLowerCase())).map((b) => {
+            let website = ''
+            try { website = new URL(b.url).hostname.replace(/^www\./, '') } catch { website = 'Bron zonder webadres' }
+            return <button type="button" key={b.id} className="doc-bron-kaart" onClick={() => naar(`#/bron/${b.id}`)}>
+              <strong>{b.titel && !/^https?:\/\//i.test(b.titel) ? b.titel : website}</strong><span>{b.titel && !/^https?:\/\//i.test(b.titel) ? website : 'Webbron'}</span><small>{b.status || 'Ongelezen'} · Open bron →</small>
+            </button>
+          })}</div>
+          {!bronnenVanBlok.length && <p className="doc-comment-hulp">Nog geen bronnen aan dit dagdeel gekoppeld.</p>}
+        </section>
       </aside>
 
       <WerkboekWalkthrough

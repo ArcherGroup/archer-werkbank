@@ -3,15 +3,16 @@ import assert from 'node:assert/strict'
 import { createServer } from 'vite'
 import react from '@vitejs/plugin-react'
 import React, { act } from 'react'
-import { createRoot } from 'react-dom/client'
+
 import { JSDOM } from 'jsdom'
 
-let vite, DocPagina, basisDom, basisGlobals
+let vite, DocPagina, basisDom, basisGlobals, createRoot
 before(async()=>{
   basisGlobals = { window: globalThis.window, document: globalThis.document, fetch: globalThis.fetch }
   globalThis.fetch = async () => { throw new Error('Externe verbinding geblokkeerd in commentcomponenttest') }
   basisDom = new JSDOM('', { url: 'http://localhost/' })
   globalThis.window = basisDom.window; globalThis.document = basisDom.window.document
+  ;({createRoot}=await import('react-dom/client'))
   globalThis.__commentDocSb = { from(table) {
     const q = { select(){return q},eq(){return q},order(){return q},range(){return q},limit(){return q},insert(){return q},
       single:async()=>({data:globalThis.__commentDocFixture,error:null}),maybeSingle:async()=>({data:null,error:null}),
@@ -50,5 +51,29 @@ test('een stuk opent met een volledig gesprek en een directe selectieactie, zond
     act(()=>document.querySelector('article.md button.comment-pin').click())
     assert.ok(document.querySelector('.doc-inspector.open'))
     assert.match(document.querySelector('.doc-inspector').textContent,/Een volledig antwoord/)
+  } finally {act(()=>root.unmount());Object.assign(globalThis,oud);dom.window.close()}
+})
+
+test('commentfocus heeft aparte bronnentab zonder het antwoordveld te remounten',async()=>{
+  const dom=new JSDOM('<div id="test"></div>',{url:'http://localhost/archer-werkbank/#/doc/16',pretendToBeVisual:true})
+  const oud=Object.fromEntries(['window','document','localStorage','requestAnimationFrame','cancelAnimationFrame','IS_REACT_ACT_ENVIRONMENT'].map(k=>[k,globalThis[k]]))
+  Object.assign(globalThis,{window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage,requestAnimationFrame:(f)=>setTimeout(()=>f(performance.now()),0),cancelAnimationFrame:clearTimeout,IS_REACT_ACT_ENVIRONMENT:true})
+  globalThis.__commentDocFixture={id:16,titel:'spreektekst',blok_id:'1.3',inhoud:'## Kosten\n\nJaarlijkse kosten bespreken.',versie:2}
+  const root=createRoot(document.getElementById('test'))
+  try {
+    await act(async()=>{root.render(React.createElement(DocPagina,{docId:16,naam:'Lezer',blokken:[{id:'1.3'}],bronnen:[{id:77,blok_id:'1.3',titel:'Kostenbron',url:'https://example.org/kosten',status:'gelezen'}],gedeeldeComments:[{id:1,doel_type:'document',doel_id:'16',auteur:'Eerste',tekst:'De hoofdvraag',anker:'Jaarlijkse kosten'}],opAntwoord:async()=>{}}));await new Promise(r=>setTimeout(r,30))})
+    const commentTab=document.querySelector('[role="tab"][aria-controls="doc-comments-panel"]')
+    const bronTab=document.querySelector('[role="tab"][aria-controls="doc-bronnen-panel"]')
+    assert.ok(commentTab,'Comments-tab ontbreekt');assert.ok(bronTab,'Bronnen-tab ontbreekt')
+    assert.equal(commentTab.getAttribute('aria-selected'),'true')
+    assert.equal(document.getElementById('doc-bronnen-panel').hidden,true)
+    const antwoord=document.querySelector('.thread-antwoord input')
+    act(()=>bronTab.click())
+    assert.equal(document.getElementById('doc-comments-panel').hidden,true)
+    assert.equal(document.getElementById('doc-bronnen-panel').hidden,false)
+    assert.match(document.getElementById('doc-bronnen-panel').textContent,/Kostenbron/)
+    act(()=>document.querySelector('article.md .comment-pin').click())
+    assert.equal(commentTab.getAttribute('aria-selected'),'true')
+    assert.equal(document.querySelector('.thread-antwoord input'),antwoord,'Tabwissel mag een concept niet remounten')
   } finally {act(()=>root.unmount());Object.assign(globalThis,oud);dom.window.close()}
 })
