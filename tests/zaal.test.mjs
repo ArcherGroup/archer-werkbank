@@ -11,6 +11,11 @@ test('het gemiddelde van de zaal is de som gedeeld door wie invulde', () => {
   assert.equal(gemiddeldeVanZaal({}), null)
 })
 
+test('V0 bundelt ETFs en fondsen en mag niet als pure ETF-meting worden gelabeld', () => {
+  assert.equal(ZAAL.verdeling.find((d) => d.naam === "ETF's en fondsen")?.deel, 3.2)
+  assert.ok(!ZAAL.verdeling.some((d) => d.naam === "ETF's"))
+})
+
 test('de verdeling telt op tot wat de bron zegt, niet tot honderd', () => {
   assert.ok(Math.abs(somVanVerdeling(ZAAL.verdeling) - 100.1) < 0.00001)
   assert.equal(somVanVerdeling([]), 0)

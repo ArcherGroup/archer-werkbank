@@ -53,7 +53,7 @@ export const ZAAL_SNAPSHOT = {
       "deel": 2.2
     },
     {
-      "naam": "ETF's",
+      "naam": "ETF's en fondsen",
       "bedrag": 82947.29,
       "deel": 3.2
     },

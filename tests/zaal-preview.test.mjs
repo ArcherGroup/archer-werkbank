@@ -31,7 +31,7 @@ test('de verdeling is een taart met een legende en blijft standaard dicht', () =
   assert.match(open, /zaal-legende/)
   assert.match(open, /Cash/)
   assert.match(open, /53,3%/)
-  assert.match(open, /ETF&#x27;s/)
+  assert.match(open, /ETF&#x27;s en fondsen/)
 })
 
 test('de bron en de beperking staan er letterlijk bij', () => {
