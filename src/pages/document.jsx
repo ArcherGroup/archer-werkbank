@@ -16,14 +16,24 @@ import { useEscape } from '../hooks/useEscape'
 import { useTraagLaden } from '../hooks/useTraagLaden'
 import { useOnbewaard } from '../hooks/useOnbewaard'
 import { beslissingenBijDocument } from '../lib/beslissing-review'
-import { inhoudVoorDownload, voegInterneLinkIn, valideerNotitieAnker } from '../lib/document'
-import { markeerAnkers, ruimAnkersOp } from '../lib/comment-markers'
-import { piekDoel, wisDoel } from '../lib/comments'
+import { inhoudVoorDownload, voegInterneLinkIn, ankerUitSelectie } from '../lib/document'
+import { markeerAnkers, ruimAnkersOp, bouwTekstIndex } from '../lib/comment-markers'
+import { voegCommentsSamen } from '../lib/comment-samenvoegen'
+import { piekDoel, wisDoel, telGesprekken, telOpen } from '../lib/comments'
 import { leesSecties, plekVanKlik } from '../lib/secties'
 import { WerkboekBalk } from '../components/werkboek-balk'
 import { WerkboekWalkthrough } from '../components/werkboek-walkthrough'
+import './document.css'
 
-export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta = [], beslissingen = [], herlaad, tik, opWalkthrough, opLos, opAntwoord, opAfwijzen, opHeropenen, opBewaren, lokaleComments = [] }) {
+/* Dezelfde comment kan hier (nog) lokaal staan en tegelijk al als server-rij in
+   `notities`/`gedeeldeComments` zitten (net gesynchroniseerd). Eén keer tellen,
+   op id of anders op client_id. */
+function samenVoegenComments(server, lokaal, docId) {
+  const eigen = (lijst) => (Array.isArray(lijst) ? lijst : []).filter((n) => n.doel_type === 'document' && String(n.doel_id) === String(docId))
+  return voegCommentsSamen(eigen(server), eigen(lokaal))
+}
+
+export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta = [], beslissingen = [], herlaad, tik, opWalkthrough, opLos, opAntwoord, opAfwijzen, opHeropenen, opBewaren, lokaleComments = [], gedeeldeComments = null }) {
   const [doc, setDoc] = useState(null)
   const [geladen, setGeladen] = useState(false)
   const [modus, setModus] = useState('lees') // lees | bewerk | historiek
@@ -44,17 +54,21 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
   const agentIngelogdRef = useRef(agentIngelogd)
   huidigDocId.current = docId
   agentIngelogdRef.current = agentIngelogd
-  const [tekstselectie, setTekstselectie] = useState('')
-  const [notitieAnker, setNotitieAnker] = useState(null)
+  const [selectieActie, setSelectieActie] = useState(null) // { range, top, left } van een lopende tekstselectie
+  const [notitieAnker, setNotitieAnker] = useState(null) // { anker, anker_context } | null
   const [ankerFout, setAnkerFout] = useState('')
-  const [actiefComment, setActiefComment] = useState(null)
-  const [flits, setFlits] = useState(null)
-  const popoverRef = useRef(null)
+  const [geselecteerdId, setGeselecteerdId] = useState(null) // het gesprek dat open staat in het paneel
+  const [lichaamTekst, setLichaamTekst] = useState(null)
+  const [gesprekSprong, setGesprekSprong] = useState(0)
+  const laatsteSprong = useRef(null)
+  const [focusTeller, setFocusTeller] = useState(0) // elke verhoging zet de focus weer op het invoerveld
   const artikelRef = useRef(null)
   // Wat nog niet verstuurd is, staat er toch: het gesprek mag niet doodvallen.
+  // `gedeeldeComments` is leidend zodra de app hem meegeeft; zonder dat leest
+  // deze pagina gewoon zijn eigen notities, zoals voorheen.
   const notitiesHier = useMemo(
-    () => [...notities, ...(Array.isArray(lokaleComments) ? lokaleComments : []).filter((n) => String(n.doel_id) === String(docId))],
-    [notities, lokaleComments, docId],
+    () => samenVoegenComments(gedeeldeComments ?? notities, lokaleComments, docId),
+    [gedeeldeComments, notities, lokaleComments, docId],
   )
   const [actieveSectie, setActieveSectie] = useState(null)
   const [laatsteKlik, setLaatsteKlik] = useState(null)
@@ -83,10 +97,11 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
     notitiesKnopRef.current?.focus()
   }, [])
   useEscape(sluitNotities, notitiesOpen)
-  useEscape(() => setActiefComment(null), !!actiefComment)
   useEffect(() => {
-    if (notitiesOpen) notitiesPaneelRef.current?.querySelector('.doc-notities-sluit')?.focus()
-  }, [notitiesOpen])
+    if (!notitiesOpen) return
+    if (geselecteerdId != null) notitiesPaneelRef.current?.querySelector('.thread-antwoord input')?.focus()
+    else if (!focusTeller) notitiesPaneelRef.current?.querySelector('.doc-notities-sluit')?.focus()
+  }, [notitiesOpen, geselecteerdId, focusTeller])
 
   const herlaadDoc = useCallback(async ({ respecteerKlad = false } = {}) => {
     try {
@@ -121,9 +136,10 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
 
   useEffect(() => {
     setGeladen(false)
-    setTekstselectie('')
+    setSelectieActie(null)
     setNotitieAnker(null)
     setNotitiesOpen(false)
+    setGeselecteerdId(null)
     setAnkerFout('')
     herlaadDoc()
     D.laadNotities('document', docId).then((n) => { if (huidigDocId.current === docId) setNotities(n) }).catch(() => {})
@@ -137,20 +153,44 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
     D.laadNotities('document', docId).then((n) => { if (huidigDocId.current === docId) setNotities(n) }).catch(() => {})
   }, [tik, herlaadDoc, docId])
 
-  // Pinnen op het scherm: elke open comment met een anker krijgt een mark en een nummer.
-  const openPin = useCallback((id) => {
-    const note = notities.find((n) => String(n.id) === String(id))
-    const pin = artikelRef.current?.querySelector(`button.comment-pin[data-comment="${id}"]`)
-    if (!note || !pin) return
-    const r = pin.getBoundingClientRect()
-    setActiefComment({
-      note,
-      top: Math.max(72, Math.min(r.bottom + 8, window.innerHeight - 300)),
-      left: Math.max(12, Math.min(r.left, window.innerWidth - 348)),
-    })
-  }, [notities])
+  // Eén gesprek openen: altijd in het paneel, altijd volledig (wortel + alle
+  // antwoorden) — nooit de oude root-only popover. Of het nu via een pin, een
+  // chip uit de comments-balk of een niet (meer) gevonden anker komt, het
+  // gesprek zelf blijft bereikbaar; stil falen bestaat hier niet.
+  const openGesprek = useCallback((id) => {
+    setGeselecteerdId(id == null ? null : String(id))
+    setGesprekSprong((t) => t + 1)
+    setNotitiesOpen(true)
+  }, [])
 
   const bodyVoorAnkers = doc?.inhoud ? splitsFrontmatter(doc.inhoud).body : ''
+  useEffect(() => {
+    if (artikelRef.current && modus === 'lees') setLichaamTekst(bouwTekstIndex(artikelRef.current).tekst)
+  }, [bodyVoorAnkers, modus])
+
+  // Tekst selecteren (muis, toetsenbord of touch) toont één directe, toegankelijke
+  // actie om er een comment bij te plaatsen — geen verborgen tweede stap.
+  useEffect(() => {
+    if (modus !== 'lees') return
+    const f = () => {
+      const sel = window.getSelection?.()
+      const binnenArtikel = sel && artikelRef.current?.contains(sel.anchorNode) && artikelRef.current?.contains(sel.focusNode)
+      if (!sel || sel.isCollapsed || !binnenArtikel || !sel.toString().trim()) {
+        setSelectieActie(null)
+        return
+      }
+      const range = sel.getRangeAt(0)
+      const r = range.getBoundingClientRect()
+      if (!r || (!r.width && !r.height)) return
+      setSelectieActie({
+        range: range.cloneRange(),
+        top: Math.max(8, r.top - 44),
+        left: Math.max(8, Math.min(r.left, window.innerWidth - 190)),
+      })
+    }
+    document.addEventListener('selectionchange', f)
+    return () => document.removeEventListener('selectionchange', f)
+  }, [modus])
 
   /* Eén scrollbeweging voor alle sprongen: naar een tag, een pin of een klikplek.
      De pagina scrolt in .hoofd, niet in het venster; zelfde berekening, animatie
@@ -221,8 +261,19 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
     return springNaarTekst(anker)
   }, [scrollNaarElement, springNaarTekst])
 
+  // Een citaat in het paneel aanklikken springt naar de tekst, maar sluit het
+  // paneel alleen op smalle schermen (waar het paneel de tekst overlapt) —
+  // op desktop blijft het gesprek gewoon open naast de tekst.
+  const toonInTekst = useCallback((n) => {
+    const smal = window.matchMedia?.('(max-width: 1100px)')?.matches
+    if (smal) sluitNotities()
+    if (!springNaarAnker(n.anker)) setAnkerFout('Passage gewijzigd of niet gevonden — het gesprek blijft hieronder bereikbaar.')
+    else setAnkerFout('')
+  }, [springNaarAnker, sluitNotities])
+
   /* Waar de vorige lezer klikte: het stuk en de zin, geen pixelpositie. */
   const onthoudKlik = useCallback((e) => {
+    if (e.target?.closest?.('button.comment-pin')) return
     const blok = e.target?.closest?.('p, li, h2, h3, blockquote, td')
     if (!blok || !artikelRef.current?.contains(blok)) return
     const plek = plekVanKlik({ markdown: bodyVoorAnkers, element: blok, documentId: docId, gebruiker: naam })
@@ -291,60 +342,54 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
   useEffect(() => {
     const root = artikelRef.current
     if (!root || modus !== 'lees') return
-    const eigen = notities
-      .filter((n) => n.doel_type === 'document' && String(n.doel_id) === String(docId) && n.anker && !n.opgelost && !n.lokaal && n.parent_id == null)
+    // Lokale comments (nog niet gesynchroniseerd) horen hier ook een pin te
+    // krijgen — anders lijkt een net geplaatste comment verdwenen te zijn.
+    const eigen = notitiesHier
+      .filter((n) => n.doel_type === 'document' && String(n.doel_id) === String(docId) && n.anker && !n.opgelost && !n.afgewezen && n.parent_id == null)
       .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')) || Number(a.id) - Number(b.id))
-    markeerAnkers(root, eigen, { opKlik: openPin })
+    markeerAnkers(root, eigen, { opKlik: openGesprek })
     return () => ruimAnkersOp(root)
-  }, [bodyVoorAnkers, notities, modus, docId, openPin])
+  }, [bodyVoorAnkers, notitiesHier, modus, docId, openGesprek])
 
-  const springNaar = useCallback((id) => {
-    const pin = artikelRef.current?.querySelector(`button.comment-pin[data-comment="${id}"]`)
-    if (!pin) return false
-    // De pagina scrolt in .hoofd, niet in het venster. Na de eerste render is de
-    // hoogte soms nog niet definitief; daarom twee keer opnieuw mikken.
-    const naarPin = () => scrollNaarElement(pin.closest('mark') || pin, { marge: 140 })
-    naarPin()
-    setTimeout(naarPin, 180)
-    const mark = pin.closest('mark') || pin.previousElementSibling
-    mark?.classList.add('comment-flits')
-    setTimeout(() => mark?.classList.remove('comment-flits'), 2600)
-    setFlits(String(id))
-    setTimeout(() => setFlits(null), 2600)
-    setTimeout(() => { naarPin(); openPin(id) }, 300)
-    return true
-  }, [openPin, scrollNaarElement])
-
-  // Vanuit de comments-balk: zodra het stuk en de comments er zijn, naar de pin.
   useEffect(() => {
-    if (!doc || !notities.length) return
+    if (geselecteerdId == null) return
+    const n = notitiesHier.find((n) => String(n.id) === geselecteerdId || String(n.client_id || '') === geselecteerdId)
+    if (!n) return
+    const sleutel = `${gesprekSprong}:${n.client_id || n.id}`
+    if (laatsteSprong.current === sleutel) return
+    const pin = [...(artikelRef.current?.querySelectorAll('button.comment-pin') || [])].find((p) => p.dataset.comment === String(n.id))
+    if (!pin) return
+    laatsteSprong.current = sleutel
+    const mark = pin.previousElementSibling
+    scrollNaarElement(mark || pin, { marge: 120 })
+    mark?.classList.add('comment-flits')
+    const timer = setTimeout(() => mark?.classList.remove('comment-flits'), 2600)
+    return () => clearTimeout(timer)
+  }, [geselecteerdId, gesprekSprong, notitiesHier, scrollNaarElement])
+
+
+  // Vanuit de comments-balk, de walkthrough of dezelfde pagina opnieuw openen:
+  // het gesprek gaat altijd open, ook zonder pin (algemene comment) of met een
+  // niet meer gevonden anker — nooit een stille misser.
+  useEffect(() => {
+    if (!doc) return
     const doel = piekDoel()
     if (!doel || doel.doel_type !== 'document' || String(doel.doel_id) !== String(docId)) return
-    const t = setTimeout(() => { if (springNaar(doel.id)) wisDoel() }, 90)
-    return () => clearTimeout(t)
-  }, [doc, notities, docId, springNaar])
+    openGesprek(doel.id)
+    wisDoel()
+  }, [doc, docId, openGesprek])
 
   // Dezelfde pagina opnieuw openen levert geen routewissel op; het event doet de rest.
   useEffect(() => {
     const f = () => {
       const doel = piekDoel()
       if (!doel || doel.doel_type !== 'document' || String(doel.doel_id) !== String(docId)) return
-      if (springNaar(doel.id)) wisDoel()
+      openGesprek(doel.id)
+      wisDoel()
     }
     window.addEventListener('werkbank-comment', f)
     return () => window.removeEventListener('werkbank-comment', f)
-  }, [docId, springNaar])
-
-  useEffect(() => {
-    if (!actiefComment) return
-    const f = (e) => {
-      if (popoverRef.current?.contains(e.target)) return
-      if (e.target?.closest?.('button.comment-pin')) return
-      setActiefComment(null)
-    }
-    document.addEventListener('mousedown', f)
-    return () => document.removeEventListener('mousedown', f)
-  }, [actiefComment])
+  }, [docId, openGesprek])
 
   useEffect(() => {
     if (!GEDEELDE_AGENT_INGESCHAKELD) return
@@ -518,20 +563,36 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
     }
   }
   const { front, body } = splitsFrontmatter(doc.inhoud ?? '')
-  const onthoudSelectie = () => {
-    const selectie = window.getSelection()
-    if (!selectie || !artikelRef.current?.contains(selectie.anchorNode) || !artikelRef.current?.contains(selectie.focusNode)) return
-    setTekstselectie(selectie.toString())
-    setAnkerFout('')
-  }
-  const koppelSelectie = () => {
+
+  // Eén klik op de actie bij een selectie: anker berekenen, paneel open,
+  // composer gefocust met het citaat zichtbaar — geen tweede stap.
+  const plaatsCommentBijSelectie = () => {
+    if (!selectieActie?.range || !artikelRef.current) return
     try {
-      setNotitieAnker(valideerNotitieAnker(doc.inhoud ?? '', tekstselectie))
+      const { anker, anker_context } = ankerUitSelectie({
+        root: artikelRef.current, range: selectieActie.range, documentVersie: doc?.versie ?? null, sectieId: actieveSectie,
+      })
+      setNotitieAnker({ anker, anker_context })
       setAnkerFout('')
+      setGeselecteerdId(null)
+      setNotitiesOpen(true)
+      setSelectieActie(null)
+      setFocusTeller((t) => t + 1)
     } catch (e) {
-      setAnkerFout(e.message)
+      setAnkerFout(e?.message || 'Selecteer een kort fragment uit de tekst van het stuk.')
     }
   }
+
+  // De duidelijke tweede weg: een comment die niet aan een passage hangt.
+  const algemeneComment = () => {
+    setNotitieAnker(null)
+    setAnkerFout('')
+    setGeselecteerdId(null)
+    setNotitiesOpen(true)
+    setSelectieActie(null)
+    setFocusTeller((t) => t + 1)
+  }
+
   const agent = {
     beschikbaar: GEDEELDE_AGENT_INGESCHAKELD && agentStatusGereed && agentActief,
     ingelogd: agentIngelogd,
@@ -573,7 +634,7 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
 
           <div className="knoprij">
             <button type="button" ref={notitiesKnopRef} className="knop doc-notities-knop" aria-controls="doc-notities-paneel" aria-expanded={notitiesOpen} onClick={() => setNotitiesOpen(true)}>
-              <Icoon naam="info" maat={14} /> Notities {notities.length ? `(${notities.length})` : ''}
+              <Icoon naam="info" maat={14} /> Comments {telGesprekken(notitiesHier) ? `(${telGesprekken(notitiesHier)})` : ''}
             </button>
             {modus === 'lees' && (
               <>
@@ -647,13 +708,13 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
               }}
               laatste={laatsteKlik}
               opLaatste={() => laatsteKlik && springNaarTekst(laatsteKlik.fragment)}
-              aantalComments={notitiesHier.filter((n) => !n.opgelost && !n.afgewezen && n.parent_id == null).length}
+              aantalComments={telOpen(notitiesHier)}
               opWalkthrough={() => { setWwStart(null); setWwOpen(true) }}
             />
           )}
 
           {modus === 'lees' && (
-            <article className="md" ref={artikelRef} onMouseUp={onthoudSelectie} onKeyUp={onthoudSelectie} onClick={onthoudKlik}>
+            <article className="md" ref={artikelRef} onClick={onthoudKlik}>
               {front && <div className="frontmatter">{front}</div>}
               <div dangerouslySetInnerHTML={{ __html: renderMd(body) }} />
             </article>
@@ -716,51 +777,26 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
         </div>
       </main>
 
-      {actiefComment && (
-        <div ref={popoverRef} className="comment-pop" style={{ top: actiefComment.top, left: actiefComment.left }} role="dialog" aria-label={`Comment van ${actiefComment.note.auteur}`}>
-          <div className="comment-pop-kop">
-            <span className="comment-pop-wie" style={{ background: D.kleurVoor(actiefComment.note.auteur) }} aria-hidden="true">{D.initialen(actiefComment.note.auteur)}</span>
-            <b>{actiefComment.note.auteur}</b>
-            <span className="comment-pop-datum">{D.datumKort(actiefComment.note.created_at)}</span>
-            <button type="button" className="comment-pop-sluit" onClick={() => setActiefComment(null)} aria-label="Comment sluiten">
-              <Icoon naam="sluiten" maat={13} />
-            </button>
-          </div>
-          {actiefComment.note.anker && <blockquote>{actiefComment.note.anker}</blockquote>}
-          <p>{actiefComment.note.tekst}</p>
-          <div className="comment-pop-acties">
-            <button type="button" className="knop zacht" onClick={() => { opWalkthrough?.(actiefComment.note.id); setActiefComment(null) }}>In de walkthrough</button>
-            <button type="button" className="knop" onClick={async () => {
-              try { await opLos?.(actiefComment.note); setActiefComment(null) } catch { meld('Oplossen mislukte. Probeer opnieuw.', { fout: true }) }
-            }}>Los op</button>
-          </div>
-        </div>
-      )}
+      {selectieActie && modus === 'lees' && <button type="button" className="doc-selectie-actie"
+        style={{ top: selectieActie.top, left: selectieActie.left }}
+        onMouseDown={(e) => e.preventDefault()} onClick={plaatsCommentBijSelectie}>Comment toevoegen</button>}
 
-      <aside id="doc-notities-paneel" ref={notitiesPaneelRef} className={`inspector doc-inspector ${notitiesOpen ? 'open' : ''}`} aria-label="Notities en bronnen bij dit stuk">
-        <button type="button" className="knop doc-notities-sluit" onClick={sluitNotities}>Sluit notities</button>
-        <div className="insp-titel">Notities bij dit stuk</div>
-        <div className="notitie-selectie">
-          <p>Selecteer tekst in het stuk om je notitie aan een passage te koppelen.</p>
-          <button className="knop zacht" type="button" onClick={koppelSelectie} disabled={!tekstselectie || modus !== 'lees'}>Notitie bij selectie</button>
-          {ankerFout && <p className="veld-fout" role="alert">{ankerFout}</p>}
-        </div>
+      <aside id="doc-notities-paneel" ref={notitiesPaneelRef} className={`inspector doc-inspector ${notitiesOpen ? 'open' : ''}`} aria-label="Comments en bronnen bij dit stuk">
+        <button type="button" className="knop doc-notities-sluit" onClick={sluitNotities}>Sluit comments</button>
+        <div className="insp-titel">Comments bij dit stuk</div>
+        <div className="doc-comment-keuze"><button type="button" className="knop zacht" onClick={algemeneComment}>Algemene comment toevoegen</button></div>
+        <p className="doc-comment-hulp">Selecteer tekst en kies Comment toevoegen. Klik op een markering of comment om het volledige gesprek te openen.</p>
+        {ankerFout && <p className="veld-fout" role="alert">{ankerFout}</p>}
         {agentFout && <p className="veld-fout" role="alert">{agentFout}</p>}
         <Notities
-          doelType="document"
-          doelId={doc.id}
-          auteur={naam}
-          notities={notitiesHier}
-          agent={agent}
-          opBewaren={opBewaren}
-          opToon={(n) => { sluitNotities(); setTimeout(() => springNaarAnker(n.anker), 80) }}
-          opAntwoord={opAntwoord}
-          opLos={opLos}
-          opAfwijzen={opAfwijzen}
-          opHeropenen={opHeropenen}
-          anker={notitieAnker}
+          doelType="document" doelId={doc.id} auteur={naam} notities={notitiesHier} agent={agent}
+          opBewaren={opBewaren} opToon={toonInTekst} opAntwoord={opAntwoord} opLos={opLos}
+          opAfwijzen={opAfwijzen} opHeropenen={opHeropenen} anker={notitieAnker}
+          geselecteerdId={geselecteerdId} opSelecteer={openGesprek}
+          opGeplaatst={(n) => openGesprek(n.client_id || n.id)} focusTeller={focusTeller}
+          lichaamTekst={lichaamTekst}
           onAnkerWissen={(vorig) => setNotitieAnker((huidig) => huidig === vorig ? null : huidig)}
-          onWijzig={() => D.laadNotities('document', doc.id).then((n) => { if (huidigDocId.current === doc.id) setNotities(n) }).catch(() => meld('Notities verversen mislukte.', { fout: true }))}
+          onWijzig={() => D.laadNotities('document', doc.id).then((n) => { if (huidigDocId.current === doc.id) setNotities(n) }).catch(() => meld('Comments verversen mislukte.', { fout: true }))}
         />
         {bronnenVanBlok.length > 0 && (
           <>
@@ -790,7 +826,7 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
         opSluiten={() => setWwOpen(false)}
         opSpring={(n) => {
           setWwOpen(false)
-          setTimeout(() => springNaarAnker(n.anker), 60)
+          openGesprek(n.client_id || n.id)
         }}
         opLos={opLos}
         opAntwoord={opAntwoord}

@@ -84,3 +84,21 @@
 .thread-status + .thread-weg { margin-left: 0; }
 
 .thread-status.lokaal { background: color-mix(in srgb, var(--accent-vlak) 16%, transparent); color: var(--tekst-2); }
+
+.thread-algemeen { margin: 8px 0 6px; color: var(--tekst-3); font-size: var(--tekst-12); font-style: italic; }
+.thread-ankerstatus { margin: 2px 0 8px; padding: 3px 9px; border-radius: 7px; background: var(--vul-sterk); color: var(--tekst-2); font-size: var(--tekst-11); display: inline-block; }
+
+.thread-bubbel-lokaal {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-vlak) 16%, transparent);
+  color: var(--tekst-2);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: .02em;
+  vertical-align: middle;
+}
+
+.thread-sync-hint { color: var(--tekst-3); font-size: var(--tekst-11); align-self: center; }
+.thread-agent-hint { margin-top: .75rem; font-size: .75rem; line-height: 1.5; color: var(--tekst-2); }

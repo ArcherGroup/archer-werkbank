@@ -147,7 +147,9 @@ export function contextVoorAnker(markdown, anker, { sectieId = null } = {}) {
    dezelfde plek moet ook kloppen na een herschrijving. */
 export function plekVanKlik({ markdown, element, documentId, gebruiker = '', nu = new Date().toISOString() }) {
   const tekst = String(markdown ?? '')
-  const fragment = plat(element?.textContent).slice(0, 90)
+  const leesElement = element?.cloneNode ? element.cloneNode(true) : element
+  leesElement?.querySelectorAll?.('button.comment-pin').forEach((pin) => pin.remove())
+  const fragment = plat(leesElement?.textContent).slice(0, 90)
   if (!fragment) return null
   const secties = leesSecties(tekst)
   const sectie = sectieVoorAnker(tekst, fragment, secties)

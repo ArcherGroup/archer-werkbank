@@ -1,5 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import * as D from '../lib/data'
+import { voegCommentsSamen } from '../lib/comment-samenvoegen'
+import { piekDoel, wisDoel } from '../lib/comments'
+import { useEscape } from '../hooks/useEscape'
 
 import { Notities } from '../components/notities'
 import { Icoon } from '../components/Icoon'
@@ -72,7 +75,19 @@ export function BronInhoud({ bron, opgehaald = null, fout = '', laden = false, o
   )
 }
 
-export function BronPagina({ bronId, naar, naam, herlaad, tik }) {
+export function BronPagina({ bronId, naar, naam, herlaad, tik, opBewaren, opAntwoord, opLos, opAfwijzen, opHeropenen, lokaleComments = [], gedeeldeComments = null }) {
+  const [notitiesOpen, setNotitiesOpen] = useState(false)
+  const [geselecteerdComment, setGeselecteerdComment] = useState(null)
+  useEscape(() => setNotitiesOpen(false), notitiesOpen)
+  useEffect(() => {
+    const open = () => {
+      const d = piekDoel()
+      if (d?.doel_type !== 'bron' || String(d.doel_id) !== String(bronId)) return
+      setNotitiesOpen(true); setGeselecteerdComment(d.id); wisDoel()
+    }
+    open(); window.addEventListener('werkbank-comment', open)
+    return () => window.removeEventListener('werkbank-comment', open)
+  }, [bronId])
   const [bron, setBron] = useState(null)
   const [geladen, setGeladen] = useState(false)
   const [notities, setNotities] = useState([])
@@ -197,6 +212,7 @@ export function BronPagina({ bronId, naar, naam, herlaad, tik }) {
       <main className="hoofd">
         <div className="hoofd-binnen">
           <div className="lezer-bron">
+            <button type="button" className="knop doc-notities-knop" onClick={() => setNotitiesOpen(true)} aria-controls="bron-comments" aria-expanded={notitiesOpen}>Comments bij deze bron</button>
             <h1 className="titel" title={titel}>{titel}</h1>
             <div className="url">
               {adres ? <a href={adres} target="_blank" rel="noopener noreferrer">{adres}<Icoon naam="extern" maat={11} /></a> : 'Ongeldig bronadres'}
@@ -242,13 +258,16 @@ export function BronPagina({ bronId, naar, naam, herlaad, tik }) {
         </div>
       </main>
 
-      <aside className="inspector breed">
-        <div className="insp-titel">Jouw notitie bij deze bron</div>
+      <aside id="bron-comments" className={`inspector breed doc-inspector ${notitiesOpen ? 'open' : ''}`} aria-label="Comments bij deze bron">
+        <button type="button" className="knop doc-notities-sluit" onClick={() => setNotitiesOpen(false)}>Sluit comments</button>
+        <div className="insp-titel">Comments bij deze bron</div>
         <Notities
           doelType="bron"
           doelId={bron.id}
           auteur={naam}
-          notities={notities}
+          notities={voegCommentsSamen((gedeeldeComments ?? notities).filter((n) => n.doel_type === 'bron' && String(n.doel_id) === String(bronId)), lokaleComments.filter((n) => n.doel_type === 'bron' && String(n.doel_id) === String(bronId)))}
+          geselecteerdId={geselecteerdComment} opSelecteer={setGeselecteerdComment}
+          opBewaren={opBewaren} opAntwoord={opAntwoord} opLos={opLos} opAfwijzen={opAfwijzen} opHeropenen={opHeropenen}
           onWijzig={() => D.laadNotities('bron', bron.id).then(setNotities)}
         />
         <div className="insp-titel">Details</div>

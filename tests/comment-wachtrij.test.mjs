@@ -13,6 +13,8 @@ before(() => {
     setItem: (k, v) => doos.set(k, String(v)),
     removeItem: (k) => doos.delete(k),
     clear: () => doos.clear(),
+    get length() { return doos.size },
+    key: (i) => [...doos.keys()][i] ?? null,
   }
 })
 after(() => { delete global.localStorage })

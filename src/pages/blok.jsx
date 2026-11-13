@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as D from '../lib/data'
+import { voegCommentsSamen } from '../lib/comment-samenvoegen'
+import { piekDoel, wisDoel } from '../lib/comments'
 
 import { Notities } from '../components/notities'
 import { Icoon, SOORT_ICOON } from '../components/Icoon'
@@ -16,11 +18,21 @@ import { useEscape } from '../hooks/useEscape'
 
 const VOLGORDE = { brief: 0, spreektekst: 1, slides: 2, werkboek: 3, oefening: 4, research: 5, bron: 6, algemeen: 7, overig: 8 }
 
-export function BlokPagina({ blokId, naar, blokken, documentenMeta, bronnen = [], beslissingen = [], naam, herlaad, tik, geladen, gegevensBeschikbaar }) {
+export function BlokPagina({ blokId, naar, blokken, documentenMeta, bronnen = [], beslissingen = [], naam, herlaad, tik, geladen, gegevensBeschikbaar, opBewaren, opAntwoord, opLos, opAfwijzen, opHeropenen, lokaleComments = [], gedeeldeComments = null }) {
   const blok = blokken.find((b) => b.id === blokId)
   const [notities, setNotities] = useState([])
   const [notitiesGeladen, setNotitiesGeladen] = useState(false)
   const [notitiesOpen, setNotitiesOpen] = useState(false)
+  const [geselecteerdComment, setGeselecteerdComment] = useState(null)
+  useEffect(() => {
+    const open = () => {
+      const d = piekDoel()
+      if (d?.doel_type !== 'blok' || String(d.doel_id) !== String(blokId)) return
+      setNotitiesOpen(true); setGeselecteerdComment(d.id); wisDoel()
+    }
+    open(); window.addEventListener('werkbank-comment', open)
+    return () => window.removeEventListener('werkbank-comment', open)
+  }, [blokId])
   const notitiesKnopRef = useRef(null)
   const notitiesPaneelRef = useRef(null)
   const stukkenPerBlok = useMemo(() => {
@@ -206,7 +218,7 @@ export function BlokPagina({ blokId, naar, blokken, documentenMeta, bronnen = []
               ))}
             </div>
             <button type="button" ref={notitiesKnopRef} className="knop doc-notities-knop" aria-controls="blok-notities-paneel" aria-expanded={notitiesOpen} onClick={() => setNotitiesOpen(true)}>
-              <Icoon naam="info" maat={14} /> Notities {notities.length ? `(${notities.length})` : ''}
+              <Icoon naam="info" maat={14} /> Comments
             </button>
             <button className="knop zacht" style={{ marginLeft: 'auto' }} onClick={() => setVraagOpen(true)} disabled={aanHetMaken}>
               <Icoon naam="plus" maat={14} />
@@ -270,10 +282,13 @@ export function BlokPagina({ blokId, naar, blokken, documentenMeta, bronnen = []
         </div>
       </main>
 
-      <aside id="blok-notities-paneel" ref={notitiesPaneelRef} className={`inspector doc-inspector ${notitiesOpen ? 'open' : ''}`} aria-label="Notities bij dit dagdeel">
-        <button type="button" className="knop doc-notities-sluit" onClick={sluitNotities}>Sluit notities</button>
-        <div className="insp-titel">Notities bij dit dagdeel</div>
-        <Notities doelType="blok" doelId={blok.id} auteur={naam} notities={notities} onWijzig={herlaadNotities} />
+      <aside id="blok-notities-paneel" ref={notitiesPaneelRef} className={`inspector doc-inspector ${notitiesOpen ? 'open' : ''}`} aria-label="Comments bij dit dagdeel">
+        <button type="button" className="knop doc-notities-sluit" onClick={sluitNotities}>Sluit comments</button>
+        <div className="insp-titel">Comments bij dit dagdeel</div>
+        <Notities doelType="blok" doelId={blok.id} auteur={naam}
+          notities={voegCommentsSamen((gedeeldeComments ?? notities).filter((n) => n.doel_type === 'blok' && String(n.doel_id) === String(blokId)), lokaleComments.filter((n) => n.doel_type === 'blok' && String(n.doel_id) === String(blokId)))}
+          geselecteerdId={geselecteerdComment} opSelecteer={setGeselecteerdComment}
+          opBewaren={opBewaren} opAntwoord={opAntwoord} opLos={opLos} opAfwijzen={opAfwijzen} opHeropenen={opHeropenen} onWijzig={herlaadNotities} />
       </aside>
 
       <Dialoog

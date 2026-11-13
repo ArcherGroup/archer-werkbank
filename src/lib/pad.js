@@ -75,7 +75,9 @@ function dagLabel(dag, dagTitels) {
 }
 
 function blokLabel(blok) {
-  return kort(blok.code || blok.id, 12)
+  const code = blok.code || blok.id
+  if (!isDagdeel(blok) || !blok.titel) return kort(code, 12)
+  return kort(`${code} · ${blok.titel}`)
 }
 
 export function padVoorRoute(route, invoer = {}) {

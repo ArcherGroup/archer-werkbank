@@ -64,6 +64,11 @@ const FOUTEN = {
   notitie_hoort_niet_bij_document: 'Deze notitie hoort niet bij dit stuk.',
   vertrouwelijk_geweigerd: 'Dit stuk is vertrouwelijk of niet toegelaten en gaat niet naar de agent.',
   ongeldige_opdracht: 'De opdracht was onvolledig of hoorde niet bij dit stuk.',
+  gesprek_gewijzigd: 'Het gesprek is gewijzigd sinds de aanvraag. Laat de agent opnieuw het volledige gesprek bekijken voordat je een voorstel toepast.',
+  gesprek_te_lang: 'Dit gesprek is te lang om volledig in één agentopdracht te verwerken. Baken de vraag samen af; er worden geen antwoorden stil weggelaten.',
+  ongeldig_gesprek: 'Het volledige gesprek kon niet betrouwbaar worden samengesteld. Ververs de comments en probeer opnieuw.',
+  anker_ongekoppeld: 'De aangehaalde passage is niet meer eenduidig terug te vinden. Selecteer de juiste tekst opnieuw voordat je de agent inschakelt.',
+  notitie_is_reactie: 'Start de agent vanuit het hoofdgesprek, zodat alle reacties meegaan.',
   anker_niet_uniek: 'De geselecteerde tekst komt meer dan één keer voor in het stuk. Selecteer een passage die maar één keer voorkomt.',
   anker_vereist: 'Dit stuk is te lang voor de agent. Selecteer eerst de passage waar het over gaat.',
   limiet_bereikt: 'De limiet voor agentopdrachten is bereikt.',
@@ -90,8 +95,9 @@ const FOUTEN = {
 /* Welke weigeringen een terugkerende fout van opStart of opBeoordeel mag verklaren. Meer niet:
    een gewone netwerkfout met het woord "timeout" is geen melding van de agent. */
 const START_WEIGERINGEN = ['niet_toegelaten', 'werkbank_onveilig', 'agent_niet_vrijgegeven', 'notitie_hoort_niet_bij_document',
-  'vertrouwelijk_geweigerd', 'ongeldige_opdracht', 'anker_vereist', 'anker_niet_uniek', 'limiet_bereikt']
-const BEOORDEEL_WEIGERINGEN = ['niet_toegelaten', 'werkbank_onveilig', 'voorstel_al_beoordeeld', 'niet_de_eigenaar', 'geen_tekstvoorstel', 'document_gewijzigd', 'extra_verificatie_vereist', 'voorstel_gewijzigd']
+  'vertrouwelijk_geweigerd', 'ongeldige_opdracht', 'anker_vereist', 'anker_niet_uniek', 'limiet_bereikt',
+  'gesprek_gewijzigd', 'gesprek_te_lang', 'ongeldig_gesprek', 'anker_ongekoppeld', 'notitie_is_reactie']
+const BEOORDEEL_WEIGERINGEN = ['niet_toegelaten', 'werkbank_onveilig', 'voorstel_al_beoordeeld', 'niet_de_eigenaar', 'geen_tekstvoorstel', 'document_gewijzigd', 'extra_verificatie_vereist', 'voorstel_gewijzigd', 'gesprek_gewijzigd']
 
 /* Wat een weigering in gewone taal zegt, of niets als we haar niet kennen. Een Supabase-fout, een
    Error en kale tekst dragen de code als `message` (of `code`). Alleen hele codes tellen, en de
@@ -613,7 +619,7 @@ export function AgentComment({ notitie, documentId, beschikbaar, ingelogd, opdra
               </button>
               <div id={uitlegId} className="agent-comment-hint">
                 {kanStarten
-                  ? <p>De agent leest deze notitie en komt met een antwoord of een tekstwijziging. Een mens beoordeelt wat de agent teruggeeft; er wordt niets automatisch aangepast.</p>
+                  ? <p>De agent leest het volledige gesprek, inclusief alle antwoorden, en de gekoppelde tekstpassage. Een mens beoordeelt het antwoord of wijzigingsvoorstel; er wordt niets automatisch aangepast.</p>
                   : blokkades.map((tekst) => <p key={tekst}>{tekst}</p>)}
               </div>
               {startFout && (

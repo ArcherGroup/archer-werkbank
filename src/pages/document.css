@@ -1,0 +1,8 @@
+.doc-selectie-actie { position: fixed; z-index: 75; padding: .55rem .8rem; min-height: 38px; border: 1px solid var(--accent-ring); border-radius: .6rem; background: var(--accent-vlak); color: white; font: inherit; font-size: .8rem; font-weight: 650; cursor: pointer; box-shadow: var(--schaduw-1); }
+.doc-selectie-actie:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.doc-comment-hulp { font-size: .8rem; line-height: 1.5; color: var(--tekst-2); margin: .5rem 0; }
+.doc-comment-keuze { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; margin-bottom: .75rem; }
+.doc-gesprek-keuze { border-radius: .6rem; scroll-margin-top: 1rem; }
+.doc-gesprek-keuze.geselecteerd { outline: 2px solid var(--accent-ring); outline-offset: 4px; }
+.doc-comment-bewaring { color: var(--tekst-2); font-size: .75rem; line-height: 1.5; margin: .4rem 0; }
+@media (max-width: 680px) { .doc-selectie-actie { min-height: 44px; } }

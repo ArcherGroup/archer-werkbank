@@ -1,5 +1,6 @@
 import React from 'react'
 import { padVoorRoute } from '../lib/pad'
+import './pad.css'
 
 /* Het pad bovenaan zegt waar je staat in de masterclass, niet waar je vandaan kwam:
    Werkbank › Dag 1 · de spiegel › 1.3 · ETF's › werkboek, met de positie erbij. */
@@ -13,7 +14,7 @@ export function Pad({ route, naar, blokken, documentenMeta, bronnen, dagTitels, 
         {pad.delen.map((deel, i) => (
           <li key={`${deel.label}-${i}`}>
             {deel.route && i !== laatste ? (
-              <button type="button" className="plek-knop" title={deel.titel || deel.label} onClick={() => naar(deel.route)}>{deel.label}</button>
+              <button type="button" className={`plek-knop${deel.titel ? ' plek-dagdeel' : ''}`} title={deel.titel || deel.label} onClick={() => naar(deel.route)}>{deel.label}</button>
             ) : (
               <span className={i === laatste ? 'plek-huidig' : 'plek-stil'} aria-current={i === laatste ? 'page' : undefined} title={deel.titel || deel.label}>{deel.label}</span>
             )}

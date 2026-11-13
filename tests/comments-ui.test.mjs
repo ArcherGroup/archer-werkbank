@@ -29,7 +29,7 @@ test('de balk toont het aantal open comments, het bereik en de echte chips', () 
     opBereik() {}, opToonOpgelost() {}, opOpen() {}, opWalkthrough() {}, opSluiten() {},
   }))
   assert.match(html, /Comments/)
-  assert.match(html, /<b class="cbalk-teller">3<\/b>/, 'drie open comments in totaal')
+  assert.match(html, /<b class="cbalk-teller">2<\/b>/, 'twee open gesprekken (comment 1 met antwoord, comment 3); antwoorden tellen niet apart')
   assert.match(html, /aria-pressed="true"[^>]*>Dit dagdeel</)
   assert.match(html, /Deze passage moet de bron noemen/)
   assert.match(html, /51 procent in cash/)

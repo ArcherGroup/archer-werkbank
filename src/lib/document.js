@@ -1,6 +1,78 @@
+import { bouwTekstIndex } from './comment-markers.js'
+import { maakAnkerContext } from './quote-anker.js'
+
 /* Een download vanuit de editor moet ook onbevestigde tekst meenemen. */
 export function inhoudVoorDownload(modus, klad, opgeslagen) {
   return modus === 'bewerk' ? (klad ?? '') : (opgeslagen ?? '')
+}
+
+function eersteTekstIn(node) {
+  if (node.nodeType === 3) return node
+  if (node.nodeType !== 1) return null
+  for (const kind of node.childNodes) {
+    const t = eersteTekstIn(kind)
+    if (t) return t
+  }
+  return null
+}
+
+function laatsteTekstIn(node) {
+  if (node.nodeType === 3) return node
+  if (node.nodeType !== 1) return null
+  for (let i = node.childNodes.length - 1; i >= 0; i -= 1) {
+    const t = laatsteTekstIn(node.childNodes[i])
+    if (t) return t
+  }
+  return null
+}
+
+/* Een klik- of sleeppositie in de DOM (knoop + kind-offset) omzetten naar een
+   offset in de platte, gerenderde tekst van `bouwTekstIndex`. Werkt zowel op
+   tekstknopen zelf (het gewone geval) als op elementknopen (bv. wanneer de
+   browser een selectie afrondt op een <p> in plaats van zijn tekst). */
+function offsetVoorPunt(knopen, container, offset) {
+  if (!container) return null
+  if (container.nodeType === 3) {
+    const k = knopen.find((x) => x.node === container)
+    if (!k) return null
+    return k.start + Math.max(0, Math.min(offset, container.nodeValue.length))
+  }
+  const kinderen = container.childNodes
+  if (offset < kinderen.length) {
+    const vanaf = eersteTekstIn(kinderen[offset])
+    if (vanaf) {
+      const k = knopen.find((x) => x.node === vanaf)
+      if (k) return k.start
+    }
+  }
+  for (let i = Math.min(offset, kinderen.length) - 1; i >= 0; i -= 1) {
+    const laatste = laatsteTekstIn(kinderen[i])
+    if (laatste) {
+      const k = knopen.find((x) => x.node === laatste)
+      if (k) return k.end
+    }
+  }
+  return null
+}
+
+/* Een echte tekstselectie in het gerenderde artikel omzetten in een comment-
+   anker: de gerenderde tekst zelf (niet de ruwe markdown, want die kent
+   opmaaktekens die de lezer nooit ziet) plus een quote-context met de rand
+   erbij, zodat een herhaalde zin zijn eigen plek houdt. Frontmatter en de
+   pin-knoppen van bestaande comments tellen nooit mee. */
+export function ankerUitSelectie({ root, range, documentVersie = null, sectieId = null }) {
+  if (!root || !range) throw new Error('Selecteer een stuk tekst om een comment aan te koppelen.')
+  const { tekst, knopen } = bouwTekstIndex(root)
+  const start = offsetVoorPunt(knopen, range.startContainer, range.startOffset)
+  const eind = offsetVoorPunt(knopen, range.endContainer, range.endOffset)
+  if (start == null || eind == null || eind <= start) {
+    throw new Error('Selecteer een kort fragment uit de tekst van het stuk.')
+  }
+  const exact = tekst.slice(start, eind)
+  if (!exact.trim() || exact.length > 2000) {
+    throw new Error('Selecteer een kort fragment uit de tekst van het stuk.')
+  }
+  return { anker: exact, anker_context: maakAnkerContext(tekst, start, eind, { documentVersie, sectieId }) }
 }
 
 export function valideerNotitieAnker(inhoud, selectie) {

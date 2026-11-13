@@ -20,7 +20,10 @@ CREATE TABLE werkbank.documenten (
 );
 CREATE TABLE werkbank.notities (
   id bigint PRIMARY KEY, doel_type text NOT NULL, doel_id text NOT NULL,
-  tekst text NOT NULL, auteur text NOT NULL, anker text, created_at timestamptz NOT NULL DEFAULT now()
+  tekst text NOT NULL, auteur text NOT NULL, anker text, created_at timestamptz NOT NULL DEFAULT now(),
+  parent_id bigint REFERENCES werkbank.notities(id) ON DELETE CASCADE,
+  afgewezen boolean NOT NULL DEFAULT false, opgelost boolean NOT NULL DEFAULT false,
+  afwijs_reden text, afgewezen_door text, anker_context jsonb
 );
 CREATE TABLE werkbank.documenten_historiek (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, document_id bigint NOT NULL,

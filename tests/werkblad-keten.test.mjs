@@ -60,11 +60,11 @@ test('niet geladen bronnen en stukken worden niet als lege of gevulde keten geto
   }
 })
 
-test('ook op een smal scherm heeft de dagdeelpagina een toegang tot de notities', () => {
+test('ook op een smal scherm heeft de dagdeelpagina toegang tot comments', () => {
   const pagina = html(BlokPagina, { blokId: '1.3' })
   assert.match(pagina, /class="knop doc-notities-knop"[^>]*aria-controls="blok-notities-paneel"/)
   assert.match(pagina, /id="blok-notities-paneel"[^>]*class="inspector doc-inspector /)
-  assert.match(pagina, />Sluit notities</)
+  assert.match(pagina, />Sluit comments</)
 })
 
 test('dagdeel 1.3 krijgt het visuele overzicht en behoudt alle stukken in een gesloten lijst', () => {

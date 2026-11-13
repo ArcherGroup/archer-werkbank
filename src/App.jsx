@@ -14,7 +14,10 @@ import { Zijbalk } from './components/zijbalk'
 import { CommentsBalk } from './components/comments-balk'
 import { Walkthrough } from './components/walkthrough'
 import { bewaarDoel, routeVoor, telOpen } from './lib/comments'
-import { bewaarInWachtrij, telWachtrij, verwerkWachtrij, alsNotitie, lokaalId, leesWachtrij } from './lib/comment-wachtrij'
+import * as W from './lib/comment-wachtrij'
+import { voegCommentsSamen } from './lib/comment-samenvoegen'
+import { zetCommentStatus } from './lib/comment-acties'
+import { CommentOverdracht } from './components/comment-overdracht'
 import { Meldingen, meld } from './components/meldingen'
 import { Hulp } from './components/hulp'
 import { Dialoog } from './components/dialoog'
@@ -52,6 +55,29 @@ export default function App() {
   const [actuaGeladen, setActuaGeladen] = useState(false)
   const [wachtrijStand, setWachtrijStand] = useState(0)
   const [wachtrijBezig, setWachtrijBezig] = useState(false)
+  const [opslagFout, setOpslagFout] = useState(null)
+  useEffect(() => {
+    if (!opslagFout || !wachtrijStand) return
+    const waarschuw = (e) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', waarschuw)
+    return () => window.removeEventListener('beforeunload', waarschuw)
+  }, [opslagFout, wachtrijStand])
+  const [commentsGeladen, setCommentsGeladen] = useState(false)
+  const gedeeldRef = useRef([])
+  const commentLeesRef = useRef(0)
+  const flushRef = useRef(null)
+  const verversCommentStand = useCallback((server = null, volledig = false) => {
+    if (Array.isArray(server)) {
+      gedeeldRef.current = server.filter((n) => !n.lokaal)
+      commentLeesRef.current += 1
+      if (volledig) setCommentsGeladen(true)
+    }
+    const lokaal = W.leesWachtrij().map(W.alsNotitie)
+    const nieuw = voegCommentsSamen(gedeeldRef.current, lokaal, W.zoekGedeeldId)
+    setAlleNotities((huidig) => JSON.stringify(huidig) === JSON.stringify(nieuw) ? huidig : nieuw)
+    setWachtrijStand(W.telWachtrij())
+    setOpslagFout(W.opslagStatus().fout)
+  }, [])
   const [bronnen, setBronnen] = useState([])
   const [beslissingen, setBeslissingen] = useState([])
   const [validaties, setValidaties] = useState([])
@@ -152,6 +178,7 @@ export default function App() {
 
   // globale data
   const herlaadAlles = useCallback(async () => {
+    const commentLees = ++commentLeesRef.current
     const uit = await Promise.allSettled([
       D.laadBlokken(),
       D.laadDocumentenMeta(),
@@ -169,7 +196,7 @@ export default function App() {
     if (bs.status === 'fulfilled') setBeslissingen(bs.value)
     if (va.status === 'fulfilled') setValidaties(va.value)
     if (vo.status === 'fulfilled') setVoorstellen(vo.value)
-    if (no.status === 'fulfilled') setAlleNotities(no.value)
+    if (no.status === 'fulfilled' && commentLees === commentLeesRef.current) verversCommentStand(no.value, true)
     if (ac.status === 'fulfilled') setActualiteit(ac.value)
     setActuaGeladen(ac.status === 'fulfilled')
     setGegevensBeschikbaar({ documenten: dm.status === 'fulfilled', bronnen: br.status === 'fulfilled', beslissingen: bs.status === 'fulfilled' })
@@ -181,7 +208,7 @@ export default function App() {
         { fout: true },
       )
     }
-  }, [])
+  }, [verversCommentStand])
 
   useEffect(() => {
     herlaadAlles().catch(console.error)
@@ -331,33 +358,15 @@ export default function App() {
     setTimeout(() => window.dispatchEvent(new Event('werkbank-comment')), 90)
   }
 
-  const losCommentOp = async (n) => {
-    const { error } = await sb.from('notities').update({ opgelost: true, opgelost_op: new Date().toISOString(), opgelost_door: naam }).eq('id', n.id)
-    if (error) throw error
-    setAlleNotities((lijst) => lijst.map((x) => (String(x.id) === String(n.id) ? { ...x, opgelost: true, opgelost_door: naam } : x)))
+  const pasCommentStatusAan = async (n, stand, reden = '') => {
+    const rij = await zetCommentStatus(sb, n, stand, naam, reden)
+    verversCommentStand(gedeeldRef.current.map((x) => String(x.id) === String(rij.id) ? rij : x))
+    setTik((t) => t + 1)
+    return rij
   }
-
-  /* Afwijzen is geen verwijderen: de comment en zijn gesprek blijven staan,
-     met de reden erbij, en tellen niet meer als open werk. */
-  const wijsCommentAf = async (n, reden = '') => {
-    const { error } = await sb.from('notities').update({
-      afgewezen: true,
-      afgewezen_op: new Date().toISOString(),
-      afgewezen_door: naam,
-      afwijs_reden: reden || null,
-    }).eq('id', n.id)
-    if (error) throw error
-    setAlleNotities((lijst) => lijst.map((x) => (String(x.id) === String(n.id) ? { ...x, afgewezen: true, afgewezen_door: naam, afwijs_reden: reden || null } : x)))
-  }
-
-  const heropenComment = async (n) => {
-    const { error } = await sb.from('notities').update({
-      afgewezen: false, afgewezen_op: null, afgewezen_door: null, afwijs_reden: null,
-      opgelost: false, opgelost_op: null, opgelost_door: null,
-    }).eq('id', n.id)
-    if (error) throw error
-    setAlleNotities((lijst) => lijst.map((x) => (String(x.id) === String(n.id) ? { ...x, afgewezen: false, opgelost: false, afgewezen_door: null, opgelost_door: null, afwijs_reden: null } : x)))
-  }
+  const losCommentOp = (n) => pasCommentStatusAan(n, 'opgelost')
+  const wijsCommentAf = (n, reden) => pasCommentStatusAan(n, 'afgewezen', reden)
+  const heropenComment = (n) => pasCommentStatusAan(n, 'open')
 
   const zetSignaalStatus = async (s, status) => {
     setActualiteit((lijst) => lijst.map((x) => (String(x.id) === String(s.id) ? { ...x, status } : x)))
@@ -369,82 +378,94 @@ export default function App() {
     }
   }
 
-  /* Commentaar bewaren kan altijd: lukt de werkbank niet, dan gaat hij in de
-     lokale wachtrij en blijft hij zichtbaar als "wachtend". Zodra het weer kan,
-     gaat hij vanzelf mee. */
-  const verstuurNotitie = async (rij) => {
-    const { data, error } = await sb.from('notities').insert({
-      doel_type: rij.doel_type,
-      doel_id: String(rij.doel_id),
-      tekst: rij.tekst,
-      auteur: rij.auteur,
-      anker: rij.anker || null,
-      parent_id: rij.parent_id ?? null,
-    }).select().single()
-    if (error) throw error
+  const verstuurNotitie = useCallback(async (rij) => {
+    const data = await D.bewaarNotitieIdempotent(rij)
+    const zonder = gedeeldRef.current.filter((n) => String(n.id) !== String(data.id))
+    verversCommentStand([...zonder, data])
     return data
-  }
-
-  const bewaarComment = async (rij) => {
-    const metId = { ...rij, lokaal_id: lokaalId() }
-    try {
-      const data = await verstuurNotitie(metId)
-      if (data) setAlleNotities((lijst) => [...lijst, data])
-      return { lokaal: false, data }
-    } catch {
-      const lijst = bewaarInWachtrij(metId)
-      const item = lijst.find((x) => x.lokaal_id === metId.lokaal_id) || lijst[lijst.length - 1]
-      setAlleNotities((oud) => [...oud.filter((x) => String(x.id) !== String(item.lokaal_id)), alsNotitie(item)])
-      setWachtrijStand(telWachtrij())
-      meld('De werkbank is even niet bereikbaar. Je comment staat lokaal bewaard en gaat mee zodra het kan.')
-      return { lokaal: true, item }
-    }
-  }
+  }, [verversCommentStand])
 
   const probeerWachtrij = useCallback(async () => {
-    if (!telWachtrij()) return { gelukt: [], mislukt: [] }
+    if (flushRef.current) return flushRef.current
+    if (!W.telWachtrij()) return { gelukt: [], mislukt: [], rest: [] }
     setWachtrijBezig(true)
-    try {
-      const uit = await verwerkWachtrij(verstuurNotitie)
-      setWachtrijStand(telWachtrij())
-      if (uit.gelukt.length) {
-        meld(`${uit.gelukt.length} comment${uit.gelukt.length === 1 ? '' : 'en'} alsnog naar de werkbank gestuurd.`)
-        await herlaadAlles()
-        setAlleNotities((lijst) => lijst.filter((x) => !x.lokaal))
-      }
-      return uit
-    } finally {
+    const werk = (async () => {
+      try {
+        const uit = await W.verwerkWachtrij(verstuurNotitie)
+        return uit
+      } finally { verversCommentStand() }
+    })()
+    flushRef.current = werk
+    try { return await werk } finally {
+      flushRef.current = null
       setWachtrijBezig(false)
     }
-  }, [herlaadAlles])
+  }, [verstuurNotitie, verversCommentStand])
 
-  // Wat lokaal bewaard is, hoort ook meteen in de lijst te staan.
-  useEffect(() => {
-    const lokaal = leesWachtrij().map(alsNotitie)
-    setWachtrijStand(lokaal.length)
-    if (lokaal.length) setAlleNotities((lijst) => [...lijst.filter((x) => !x.lokaal), ...lokaal])
-  }, [])
+  const bewaarComment = async (rij) => {
+    const id = W.lokaalId()
+    const resultaat = W.voegToeAanWachtrij({ ...rij, lokaal_id: id, client_id: id })
+    verversCommentStand()
+    await probeerWachtrij()
+    const data = gedeeldRef.current.find((n) => n.client_id === resultaat.item.client_id)
+    if (data) return { lokaal: false, data }
+    return { lokaal: true, item: W.alsNotitie(resultaat.item), opslagBeperkt: W.opslagStatus().duurzaam === false }
+  }
 
-  // De wachtrij stil proberen leeg te maken: bij het opstarten, elk half uur,
-  // en zodra de browser weer online is.
+  const importeerComments = async (inhoud) => {
+    const resultaat = W.importeerWachtrij(inhoud)
+    if (!resultaat.ok) throw new Error(resultaat.fout)
+    verversCommentStand()
+    await probeerWachtrij()
+    return { bericht: `${resultaat.aantalToegevoegd} bericht${resultaat.aantalToegevoegd === 1 ? '' : 'en'} overgenomen. ${W.telWachtrij() ? 'Nog niet alles is gedeeld; de lokale berichten blijven bewaard.' : 'Alle overgenomen berichten zijn gedeeld.'}` }
+  }
+
+  useEffect(() => { verversCommentStand() }, [verversCommentStand])
+
   useEffect(() => {
     const probeer = () => { probeerWachtrij().catch(() => {}) }
+    const bijOpslag = (e) => {
+      if (e.key === null || e.key?.startsWith('werkbank_comment_')) { verversCommentStand(); probeer() }
+    }
     const t0 = setTimeout(probeer, 1200)
-    const t1 = setInterval(probeer, 30 * 60 * 1000)
+    const t1 = setInterval(probeer, 30_000)
     window.addEventListener('online', probeer)
-    return () => { clearTimeout(t0); clearInterval(t1); window.removeEventListener('online', probeer) }
-  }, [probeerWachtrij])
+    window.addEventListener('storage', bijOpslag)
+    return () => {
+      clearTimeout(t0); clearInterval(t1)
+      window.removeEventListener('online', probeer)
+      window.removeEventListener('storage', bijOpslag)
+    }
+  }, [probeerWachtrij, verversCommentStand])
 
-  const antwoordComment = async (n, tekst) => {
-    await bewaarComment({
-      doel_type: n.doel_type,
-      doel_id: String(n.doel_id),
-      tekst,
-      auteur: naam,
-      anker: n.anker || null,
-      parent_id: n.id,
-    })
-  }
+  // Realtime is de snelle weg. Hercontrole bij tabwissel en elke 15 seconden
+  // houdt gesprekken ook actueel wanneer een netwerk WebSockets blokkeert.
+  useEffect(() => {
+    if (!naam) return
+    let geldig = true
+    const lees = async () => {
+      if (document.hidden) return
+      const verzoek = ++commentLeesRef.current
+      try {
+        const rows = await D.laadNotitiesAlles()
+        if (geldig && verzoek === commentLeesRef.current) verversCommentStand(rows, true)
+      } catch { /* Laat de laatst bekende gesprekken en lokale berichten staan. */ }
+    }
+    const timer = setInterval(lees, 15_000)
+    window.addEventListener('focus', lees)
+    document.addEventListener('visibilitychange', lees)
+    return () => {
+      geldig = false; clearInterval(timer)
+      window.removeEventListener('focus', lees)
+      document.removeEventListener('visibilitychange', lees)
+    }
+  }, [naam, verversCommentStand])
+
+  const antwoordComment = async (n, tekst) => bewaarComment({
+    doel_type: n.doel_type, doel_id: String(n.doel_id), tekst, auteur: naam,
+    anker: n.anker || null, anker_context: n.anker_context || null,
+    parent_id: W.zoekGedeeldId(n.id) ?? n.id,
+  })
 
   const kiesNaam = (n) => {
     localStorage.setItem('werkbank_naam', n)
@@ -480,16 +501,20 @@ export default function App() {
         }}
       />
       {wachtrijStand > 0 && (
-        <div className="wachtrij-melding" role="status">
+        <div className="wachtrij-melding" role={opslagFout ? 'alert' : 'status'}>
           <span>
-            {wachtrijStand === 1
-              ? 'Eén comment staat lokaal bewaard.'
-              : `${wachtrijStand} comments staan lokaal bewaard.`}
-            {' '}Ze gaan automatisch naar de werkbank zodra dat kan.
+            {opslagFout || `${wachtrijStand} bericht${wachtrijStand === 1 ? '' : 'en'} alleen op dit toestel. `}
+            {!opslagFout && (window.__previewVeilig === true
+              ? 'Deze testweergave deelt niets. Exporteer je comments en neem ze mee naar de online werkbank.'
+              : 'Nog niet gedeeld. Ze worden automatisch opnieuw verstuurd zodra dat kan.')}
           </span>
-          <button type="button" className="knop zacht" onClick={() => probeerWachtrij()} disabled={wachtrijBezig}>
-            {wachtrijBezig ? 'Proberen…' : 'Nu proberen'}
+          <button type="button" className="knop zacht" onClick={() => probeerWachtrij().catch(() => {})} disabled={wachtrijBezig}>
+            {wachtrijBezig ? 'Synchroniseren…' : 'Nu synchroniseren'}
           </button>
+          <button type="button" className="knop zacht" onClick={() => {
+            setCommentsAan(true)
+            requestAnimationFrame(() => { const el = document.querySelector('.co-overdracht'); if (el) el.open = true })
+          }}>Comments meenemen</button>
         </div>
       )}
 
@@ -509,6 +534,10 @@ export default function App() {
           opWalkthrough={() => setWalkthrough({ startId: null })}
           opSluiten={() => setCommentsAan(false)}
           titel={barTitel}
+          hulpmiddelen={<div className="co-hulpmiddelen">
+            <CommentOverdracht aantal={wachtrijStand} opImport={importeerComments} />
+            <button type="button" className="knop zacht" onClick={() => setTik((t) => t + 1)}>Gesprekken verversen</button>
+          </div>}
         />
       )}
       {menuOpen && <button type="button" className="mobiel-menu-achtergrond" onClick={() => setMenuOpen(false)} aria-label="Navigatie sluiten" />}
@@ -560,6 +589,7 @@ export default function App() {
             opHeropenen={heropenComment}
             opBewaren={bewaarComment}
             lokaleComments={lokaleComments}
+            gedeeldeComments={commentsGeladen ? alleNotities.filter((n) => !n.lokaal) : null}
             actualiteit={actualiteit}
             actuaGeladen={actuaGeladen}
             opSignaalStatus={zetSignaalStatus}

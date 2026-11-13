@@ -15,7 +15,7 @@ from urllib.parse import urlsplit
 GUARD = r'''<script>
 (() => {
   window.__previewGeblokkeerd = [];
-  try { localStorage.setItem('werkbank_naam', 'Preview'); } catch {}
+  try { if (!localStorage.getItem('werkbank_naam')) localStorage.setItem('werkbank_naam', 'Preview'); } catch {}
   const isProef = (url, methode) => methode === 'POST' && url.origin === location.origin &&
     /^\/archer-werkbank\/api\/agent-proef\/(start|beoordeel|reset)$/.test(url.pathname);
   const origineel = window.fetch.bind(window);
@@ -55,7 +55,7 @@ def maak_preview_html(html):
     pad = matches[0].group(1)
     loader = "<script type=\"module\">if (window.__previewVeilig === true) import('%s');</script>" % pad
     html = html[:matches[0].start()] + GUARD + loader + html[matches[0].end():]
-    banner = '<div role="status" style="position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:9999;padding:7px 12px;border-radius:999px;background:#f4cb56;color:#1d1d1f;font:600 12px system-ui;white-space:nowrap;">Lokale proef · fictieve agenttekst · geen gedeelde wijzigingen</div>'
+    banner = '''<aside role="status" aria-label="Technische testweergave" style="position:fixed;bottom:10px;right:12px;left:auto;z-index:9999;max-width:calc(100vw - 24px);padding:8px 12px;border-radius:10px;background:#f4cb56;color:#1d1d1f;font:500 12px/1.5 system-ui;box-shadow:0 2px 12px #0002;"><strong>Technische testweergave</strong> · Alleen op dit toestel.<br>Comments worden hier niet gedeeld. Exporteer ze via Comments meenemen.<br><a href="https://archergroup.github.io/archer-werkbank/" target="_blank" rel="noopener noreferrer" style="font-weight:700;color:#002f86;">Open de online werkbank</a></aside>'''
     return html.replace('</body>', banner + '</body>', 1)
 
 

@@ -2,6 +2,19 @@
 -- Een aparte migratie voor echte login/RLS en beveiliging van lees-bron is eerst vereist.
 -- Nieuwe tabellen hebben geen anonieme rechten. De werker blijft standaard uit.
 BEGIN;
+-- Voorwaarde voor de volledige commentconversatie: de bestaande commentkolommen van werkbank.notities moeten er
+-- al zijn; de migratie stopt anders. Alleen de quote-ankercontext (anker_context jsonb: exact, prefix, suffix,
+-- docversie) wordt idempotent bijgezet; dezelfde kolomdefinitie als 20261113_comment_ervaring.sql, in elke volgorde veilig.
+ALTER TABLE werkbank.notities ADD COLUMN IF NOT EXISTS anker_context jsonb;
+DO $$
+DECLARE ontbreekt text;
+BEGIN
+  SELECT string_agg(k, ', ') INTO ontbreekt
+    FROM unnest(ARRAY['parent_id','afgewezen','opgelost','afwijs_reden','anker_context','auteur','created_at','anker']) AS k
+    WHERE NOT EXISTS (SELECT 1 FROM pg_catalog.pg_attribute a
+                      WHERE a.attrelid = to_regclass('werkbank.notities') AND a.attname = k AND a.attnum > 0 AND NOT a.attisdropped);
+  IF ontbreekt IS NOT NULL THEN RAISE EXCEPTION 'notities_kolommen_ontbreken: %', ontbreekt; END IF;
+END $$;
 CREATE SCHEMA IF NOT EXISTS werkbank_private;
 REVOKE ALL ON SCHEMA werkbank_private FROM PUBLIC, anon, authenticated;
 
@@ -35,6 +48,12 @@ CREATE TABLE werkbank.agent_opdrachten (
   document_sha256 bytea NOT NULL CHECK (octet_length(document_sha256) = 32),
   opmerking_snapshot text NOT NULL CHECK (length(opmerking_snapshot) BETWEEN 3 AND 2000),
   anker_snapshot text CHECK (anker_snapshot IS NULL OR length(anker_snapshot) BETWEEN 1 AND 2000),
+  -- Volledige conversatie op het aanvraagmoment: root + alle reacties, root eerst, daarna created_at,id.
+  -- Elk bericht: {id,parent_id,auteur,tijd,tekst,status,reden}. De hash wordt bij claim, opslag en review
+  -- opnieuw vergeleken met de live thread.
+  gesprek_snapshot jsonb NOT NULL CHECK (jsonb_typeof(gesprek_snapshot) = 'array' AND jsonb_array_length(gesprek_snapshot) BETWEEN 1 AND 40),
+  gesprek_sha256 text NOT NULL CHECK (gesprek_sha256 ~ '^[0-9a-f]{64}$'),
+  anker_context_snapshot jsonb CHECK (anker_context_snapshot IS NULL OR jsonb_typeof(anker_context_snapshot) = 'object'),
   aangevraagd_door uuid NOT NULL REFERENCES auth.users(id),
   status text NOT NULL DEFAULT 'wachtrij' CHECK (status IN ('wachtrij', 'bezig', 'klaar', 'mislukt', 'geannuleerd')),
   poging integer NOT NULL DEFAULT 0 CHECK (poging BETWEEN 0 AND 2),
@@ -188,7 +207,7 @@ GRANT EXECUTE ON FUNCTION werkbank.agent_status() TO authenticated;
 CREATE FUNCTION werkbank_private.agent_maak_opdracht(p_notitie bigint, p_document bigint) RETURNS bigint
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $$
-DECLARE gebruiker uuid := auth.uid(); doc werkbank.documenten%ROWTYPE; notitie werkbank.notities%ROWTYPE; bestaand bigint; nieuw bigint;
+DECLARE gebruiker uuid := auth.uid(); doc werkbank.documenten%ROWTYPE; notitie werkbank.notities%ROWTYPE; lopend werkbank.agent_opdrachten%ROWTYPE; nieuw bigint; gesprek jsonb;
 BEGIN
   IF gebruiker IS NULL OR NOT werkbank_private.agent_is_lid() THEN RAISE EXCEPTION 'niet_toegelaten' USING ERRCODE = '42501'; END IF;
   IF NOT werkbank_private.agent_basis_veilig() THEN RAISE EXCEPTION 'werkbank_onveilig' USING ERRCODE = '42501'; END IF;
@@ -205,20 +224,47 @@ BEGIN
      OR doc.id IN (30,31,77,78,79) OR lower(coalesce(doc.pad,'')) LIKE '%anthony-swolfs-een-leven-lang-geld%'
      OR lower(coalesce(doc.pad,'')) LIKE '%van-eesbeeck%' THEN RAISE EXCEPTION 'vertrouwelijk_geweigerd'; END IF;
   IF length(btrim(notitie.tekst)) NOT BETWEEN 3 AND 2000 OR doc.inhoud IS NULL OR length(doc.inhoud) = 0 THEN RAISE EXCEPTION 'ongeldige_opdracht'; END IF;
-  IF length(doc.inhoud) > 12000 AND notitie.anker IS NULL THEN RAISE EXCEPTION 'anker_vereist'; END IF;
-  IF notitie.anker IS NOT NULL AND (length(notitie.anker) NOT BETWEEN 1 AND 2000 OR strpos(doc.inhoud, notitie.anker) = 0
-       OR strpos(substring(doc.inhoud FROM strpos(doc.inhoud, notitie.anker) + 1), notitie.anker) > 0) THEN
-    RAISE EXCEPTION 'anker_niet_uniek';
+  IF notitie.parent_id IS NOT NULL THEN RAISE EXCEPTION 'notitie_is_reactie'; END IF;
+  -- Hele conversatie als input: te veel is een eerlijke fout, nooit stille afkapping (grenzen gelijk aan agent/gedeelde_agent.py).
+  gesprek := werkbank_private.agent_gesprek(notitie.id);
+  IF gesprek IS NULL OR EXISTS (SELECT 1 FROM jsonb_array_elements(gesprek) e WHERE length(btrim(e->>'tekst')) = 0) THEN RAISE EXCEPTION 'ongeldig_gesprek'; END IF;
+  IF jsonb_array_length(gesprek) > 40
+     OR (SELECT coalesce(sum(length(e->>'tekst') + length(e->>'reden')), 0) FROM jsonb_array_elements(gesprek) e) > 8000 THEN
+    RAISE EXCEPTION 'gesprek_te_lang';
+  END IF;
+  IF notitie.anker_context IS NOT NULL AND NOT (
+       jsonb_typeof(notitie.anker_context) = 'object'
+       AND jsonb_typeof(notitie.anker_context->'exact') = 'string' AND length(btrim(notitie.anker_context->>'exact')) BETWEEN 1 AND 2000
+       AND jsonb_typeof(notitie.anker_context->'prefix') = 'string' AND length(notitie.anker_context->>'prefix') <= 500
+       AND jsonb_typeof(notitie.anker_context->'suffix') = 'string' AND length(notitie.anker_context->>'suffix') <= 500
+       AND jsonb_typeof(notitie.anker_context->'docversie') = 'number' AND (notitie.anker_context->>'docversie') ~ '^[1-9][0-9]{0,8}$') THEN
+    RAISE EXCEPTION 'anker_ongekoppeld';
+  END IF;
+  IF length(doc.inhoud) > 12000 AND notitie.anker IS NULL AND notitie.anker_context IS NULL THEN RAISE EXCEPTION 'anker_vereist'; END IF;
+  -- Een ruw gevonden anker moet uniek zijn. Staat het niet letterlijk in de markdown maar is er een ankercontext
+  -- (selectie over vet/links), dan lost de werker dat zonder gok op of meldt 'anker_ongekoppeld'.
+  IF notitie.anker IS NOT NULL THEN
+    IF length(notitie.anker) NOT BETWEEN 1 AND 2000 THEN RAISE EXCEPTION 'anker_niet_uniek'; END IF;
+    IF strpos(doc.inhoud, notitie.anker) > 0 THEN
+      IF strpos(substring(doc.inhoud FROM strpos(doc.inhoud, notitie.anker) + 1), notitie.anker) > 0 THEN RAISE EXCEPTION 'anker_niet_uniek'; END IF;
+    ELSIF notitie.anker_context IS NULL THEN
+      RAISE EXCEPTION 'anker_niet_uniek';
+    END IF;
   END IF;
   PERFORM pg_catalog.pg_advisory_xact_lock(7120712026);
-  SELECT id INTO bestaand FROM werkbank.agent_opdrachten WHERE notitie_id = p_notitie AND document_id = p_document AND status IN ('wachtrij','bezig') ORDER BY id DESC LIMIT 1;
-  IF bestaand IS NOT NULL THEN RETURN bestaand; END IF;
+  SELECT * INTO lopend FROM werkbank.agent_opdrachten WHERE notitie_id = p_notitie AND document_id = p_document AND status IN ('wachtrij','bezig') ORDER BY id DESC LIMIT 1;
+  IF lopend.id IS NOT NULL THEN
+    IF werkbank_private.agent_gesprek_actueel(notitie.id, doc.id, lopend.gesprek_sha256, lopend.anker_snapshot, lopend.anker_context_snapshot) THEN RETURN lopend.id; END IF;
+    -- Het gesprek is intussen veranderd: de oude opdracht kan nooit meer een voorstel opleveren.
+    UPDATE werkbank.agent_opdrachten SET status='geannuleerd', fout_code='gesprek_gewijzigd', claim_token=NULL, lease_tot=NULL, klaar_op=now() WHERE id = lopend.id;
+  END IF;
   IF (SELECT count(*) FROM werkbank.agent_opdrachten WHERE aangevraagd_door = gebruiker AND created_at >= now() - interval '24 hours') >= 10
       OR (SELECT count(*) FROM werkbank.agent_opdrachten WHERE status IN ('wachtrij','bezig')) >= 5 THEN
     RAISE EXCEPTION 'limiet_bereikt';
   END IF;
-  INSERT INTO werkbank.agent_opdrachten(notitie_id, document_id, document_versie, document_updated_at, document_sha256, opmerking_snapshot, anker_snapshot, aangevraagd_door)
-    VALUES (notitie.id, doc.id, doc.versie, doc.updated_at, pg_catalog.sha256(pg_catalog.convert_to(doc.inhoud,'UTF8')), btrim(notitie.tekst), notitie.anker, gebruiker) RETURNING id INTO nieuw;
+  INSERT INTO werkbank.agent_opdrachten(notitie_id, document_id, document_versie, document_updated_at, document_sha256, opmerking_snapshot, anker_snapshot, anker_context_snapshot, gesprek_snapshot, gesprek_sha256, aangevraagd_door)
+    VALUES (notitie.id, doc.id, doc.versie, doc.updated_at, pg_catalog.sha256(pg_catalog.convert_to(doc.inhoud,'UTF8')), btrim(notitie.tekst), notitie.anker,
+            notitie.anker_context, gesprek, werkbank_private.agent_gesprek_hash(gesprek), gebruiker) RETURNING id INTO nieuw;
   RETURN nieuw;
 END $$;
 REVOKE ALL ON FUNCTION werkbank_private.agent_maak_opdracht(bigint,bigint) FROM PUBLIC, anon, authenticated;
@@ -249,10 +295,56 @@ BEGIN
 END $$;
 GRANT USAGE ON SCHEMA werkbank_private TO werkbank_agent;
 
+CREATE FUNCTION werkbank_private.agent_gesprek(p_root bigint) RETURNS jsonb
+LANGUAGE sql STABLE SET search_path = ''
+AS $$
+  -- Geen dieptegrens: de hele conversatie hoort mee, hoe diep ook. Een lus in de
+  -- parent-ketting (kan alleen bij corrupte data) wordt afgebroken met het pad van
+  -- al bezochte id's, nooit door stil af te kappen. Te veel blijft een eerlijke
+  -- fout bij de aanroeper (agent_maak_opdracht: >40 berichten of >8000 tekens).
+  WITH RECURSIVE draad AS (
+    SELECT n.id, n.parent_id, n.auteur, n.created_at, n.tekst, n.afgewezen, n.opgelost, n.afwijs_reden, 0 AS diepte, ARRAY[n.id] AS pad
+      FROM werkbank.notities n WHERE n.id = p_root AND n.parent_id IS NULL
+    UNION ALL
+    SELECT k.id, k.parent_id, k.auteur, k.created_at, k.tekst, k.afgewezen, k.opgelost, k.afwijs_reden, d.diepte + 1, d.pad || k.id
+      FROM werkbank.notities k JOIN draad d ON k.parent_id = d.id WHERE NOT (k.id = ANY(d.pad))
+  )
+  SELECT jsonb_agg(jsonb_build_object(
+    'id', id, 'parent_id', parent_id, 'auteur', auteur,
+    'tijd', coalesce(to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'), ''),
+    'tekst', tekst,
+    'status', CASE WHEN afgewezen IS TRUE THEN 'afgewezen' WHEN opgelost IS TRUE THEN 'opgelost' ELSE 'open' END,
+    'reden', coalesce(afwijs_reden, '')) ORDER BY (diepte > 0), created_at, id)
+  FROM draad
+$$;
+CREATE FUNCTION werkbank_private.agent_gesprek_hash(p_gesprek jsonb) RETURNS text
+LANGUAGE sql IMMUTABLE SET search_path = ''
+AS $$
+  SELECT pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to(
+    'n' || jsonb_array_length(p_gesprek)::text || ';' || coalesce((
+      SELECT string_agg(octet_length(coalesce(f.waarde, ''))::text || ':' || coalesce(f.waarde, ''), '' ORDER BY x.ord, f.nr)
+      FROM jsonb_array_elements(p_gesprek) WITH ORDINALITY AS x(e, ord)
+      CROSS JOIN LATERAL unnest(ARRAY[x.e->>'id', x.e->>'parent_id', x.e->>'auteur', x.e->>'tijd', x.e->>'tekst', x.e->>'status', x.e->>'reden'])
+        WITH ORDINALITY AS f(waarde, nr)
+    ), ''), 'UTF8')), 'hex')
+$$;
+CREATE FUNCTION werkbank_private.agent_gesprek_actueel(p_notitie bigint, p_document bigint, p_sha text, p_anker text, p_context jsonb) RETURNS boolean
+LANGUAGE sql STABLE SET search_path = ''
+AS $$
+  SELECT coalesce((
+    SELECT n.doel_type = 'document' AND n.doel_id = p_document::text AND n.parent_id IS NULL
+       AND n.anker IS NOT DISTINCT FROM p_anker AND n.anker_context IS NOT DISTINCT FROM p_context
+       AND werkbank_private.agent_gesprek_hash(werkbank_private.agent_gesprek(n.id)) = p_sha
+    FROM werkbank.notities n WHERE n.id = p_notitie), false)
+$$;
+REVOKE ALL ON FUNCTION werkbank_private.agent_gesprek(bigint) FROM PUBLIC, anon, authenticated, werkbank_agent;
+REVOKE ALL ON FUNCTION werkbank_private.agent_gesprek_hash(jsonb) FROM PUBLIC, anon, authenticated, werkbank_agent;
+REVOKE ALL ON FUNCTION werkbank_private.agent_gesprek_actueel(bigint,bigint,text,text,jsonb) FROM PUBLIC, anon, authenticated, werkbank_agent;
+
 CREATE FUNCTION werkbank_private.agent_claim()
 RETURNS TABLE(opdracht_id bigint, claim_token uuid, notitie_id bigint, document_id bigint,
               document_versie integer, document_updated_at timestamptz, opmerking text, anker text,
-              document_pad text, document_inhoud text)
+              document_pad text, document_inhoud text, gesprek jsonb, gesprek_sha256 text, anker_context jsonb)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $$
 DECLARE taak werkbank.agent_opdrachten%ROWTYPE; doc werkbank.documenten%ROWTYPE; token uuid;
@@ -280,11 +372,16 @@ BEGIN
     UPDATE werkbank.agent_opdrachten SET status='mislukt', fout_code='document_gewijzigd_of_geweigerd', klaar_op=now() WHERE id=taak.id;
     RETURN;
   END IF;
+  IF NOT werkbank_private.agent_gesprek_actueel(taak.notitie_id, taak.document_id, taak.gesprek_sha256, taak.anker_snapshot, taak.anker_context_snapshot) THEN
+    UPDATE werkbank.agent_opdrachten SET status='mislukt', fout_code='gesprek_gewijzigd', klaar_op=now() WHERE id=taak.id;
+    RETURN;
+  END IF;
   token := pg_catalog.gen_random_uuid();
   UPDATE werkbank.agent_opdrachten SET status='bezig', poging=poging+1, claim_token=token, geclaimd_op=now(), lease_tot=now()+interval '3 minutes'
     WHERE id=taak.id;
   RETURN QUERY SELECT taak.id, token, taak.notitie_id, doc.id, doc.versie, doc.updated_at,
-                      taak.opmerking_snapshot, taak.anker_snapshot, doc.pad, doc.inhoud;
+                      taak.opmerking_snapshot, taak.anker_snapshot, doc.pad, doc.inhoud,
+                      taak.gesprek_snapshot, taak.gesprek_sha256, taak.anker_context_snapshot;
 END $$;
 REVOKE ALL ON FUNCTION werkbank_private.agent_claim() FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION werkbank_private.agent_claim() TO werkbank_agent;
@@ -322,6 +419,10 @@ BEGIN
     UPDATE werkbank.agent_opdrachten SET status='mislukt', fout_code='document_gewijzigd_of_geweigerd', klaar_op=now() WHERE id=taak.id;
     RETURN 'mislukt';
   END IF;
+  IF NOT werkbank_private.agent_gesprek_actueel(taak.notitie_id, taak.document_id, taak.gesprek_sha256, taak.anker_snapshot, taak.anker_context_snapshot) THEN
+    UPDATE werkbank.agent_opdrachten SET status='mislukt', fout_code='gesprek_gewijzigd', klaar_op=now() WHERE id=taak.id;
+    RETURN 'mislukt';
+  END IF;
   IF p_soort='antwoord' AND (coalesce(p_oud,'') <> '' OR coalesce(p_nieuw,'') <> '') THEN RAISE EXCEPTION 'ongeldige_uitvoer'; END IF;
   IF p_soort='wijziging' AND (
       p_oud IS NULL OR length(btrim(p_oud)) = 0 OR length(p_oud) > 2000 OR
@@ -344,7 +445,8 @@ DECLARE code text;
 BEGIN
   code := CASE WHEN p_code IN ('vertrouwelijk_geweigerd','notitie_hoort_niet_bij_document','anker_vereist','anker_niet_uniek',
     'ongeldige_opdracht','ongeldige_uitvoer','tekst_niet_uniek','modelsleutel_ontbreekt','model_niet_toegelaten',
-    'model_fout','timeout','budget_op','limiet_bereikt','redirect_geweigerd','interne_fout') THEN p_code ELSE 'interne_fout' END;
+    'model_fout','timeout','budget_op','limiet_bereikt','redirect_geweigerd','interne_fout',
+    'gesprek_te_lang','gesprek_gewijzigd','ongeldig_gesprek','anker_ongekoppeld') THEN p_code ELSE 'interne_fout' END;
   UPDATE werkbank.agent_opdrachten SET status='mislukt', fout_code=code, klaar_op=now()
     WHERE id=p_opdracht AND status='bezig' AND claim_token=p_token AND lease_tot>now();
   IF NOT FOUND THEN RAISE EXCEPTION 'claim_verlopen'; END IF;
@@ -386,6 +488,10 @@ BEGIN
     RETURN 'afgewezen';
   END IF;
   IF concept.soort <> 'wijziging' THEN RAISE EXCEPTION 'geen_tekstvoorstel'; END IF;
+  -- Toepassen alleen als het gesprek (reacties, status, reden, anker) nog exact is zoals het voorstel het zag.
+  IF NOT werkbank_private.agent_gesprek_actueel(taak.notitie_id, taak.document_id, taak.gesprek_sha256, taak.anker_snapshot, taak.anker_context_snapshot) THEN
+    RAISE EXCEPTION 'gesprek_gewijzigd';
+  END IF;
   IF doc.id IS NULL OR doc.versie <> taak.document_versie OR doc.updated_at <> taak.document_updated_at OR
       pg_catalog.sha256(pg_catalog.convert_to(doc.inhoud,'UTF8')) IS DISTINCT FROM taak.document_sha256 OR
       strpos(doc.inhoud,concept.oorspronkelijk)=0 OR

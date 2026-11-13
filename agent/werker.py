@@ -77,7 +77,9 @@ def werk_een(wachtrij, model):
                     'inhoud': opdracht['document_inhoud'], 'versie': opdracht['document_versie'],
                     'agent_toegelaten': True, 'vertrouwelijkheid': 'intern'}
         notitie = {'id': opdracht['notitie_id'], 'doel_type': 'document',
-                   'doel_id': str(opdracht['document_id']), 'tekst': opdracht['opmerking'], 'anker': opdracht['anker']}
+                   'doel_id': str(opdracht['document_id']), 'tekst': opdracht['opmerking'], 'anker': opdracht['anker'],
+                   'gesprek': opdracht.get('gesprek'), 'gesprek_sha256': opdracht.get('gesprek_sha256'),
+                   'anker_context': opdracht.get('anker_context')}
         voorbereid = bereid_voor(notitie, document)
         gebruik = model(voorbereid)
         voorstel = beoordeel_voorstel(voorbereid, document['inhoud'], gebruik['tekst'])

@@ -9,7 +9,7 @@ import './comments-balk.css'
 export function CommentsBalk({
   notities = [], blokken = [], documentenMeta = [], bronnen = [],
   blokId = null, dag = null, bereik = 'dagdeel', opBereik,
-  toonOpgelost = false, opToonOpgelost, opOpen, opWalkthrough, opSluiten, titel = '',
+  toonOpgelost = false, opToonOpgelost, opOpen, opWalkthrough, opSluiten, titel = '', hulpmiddelen = null,
 }) {
   const ctx = { blokken, documentenMeta, bronnen }
   const zichtbaar = filterComments(notities, { ...ctx, bereik, blokId, dag, toonOpgelost })
@@ -30,8 +30,8 @@ export function CommentsBalk({
         </div>
         {titel && <span className="cbalk-scope">{titel}</span>}
         <label className="cbalk-schakel">
-          <input type="checkbox" checked={toonOpgelost} onChange={(e) => opToonOpgelost?.(e.target.checked)} />
-          <span>Toon opgelost</span>
+          <input type="checkbox" aria-label="Toon opgelost of afgewezen gesprekken" checked={toonOpgelost} onChange={(e) => opToonOpgelost?.(e.target.checked)} />
+          <span title="Toon opgeloste en afgewezen gesprekken">Afgehandeld</span>
         </label>
         <button type="button" className="knop primair cbalk-start" onClick={opWalkthrough} disabled={!groep.length}>
           <Icoon naam="chevronRechts" maat={14} /> Walkthrough
@@ -40,7 +40,7 @@ export function CommentsBalk({
           <Icoon naam="sluiten" maat={15} />
         </button>
       </div>
-
+      {hulpmiddelen && <div className="cbalk-hulpmiddelen">{hulpmiddelen}</div>}
       <div className="cbalk-rij" role="list">
         {groep.length === 0 && (
           <p className="cbalk-leeg">

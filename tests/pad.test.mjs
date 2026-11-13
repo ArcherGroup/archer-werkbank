@@ -43,7 +43,7 @@ const invoer = { blokken, documentenMeta, bronnen, dagTitels }
 
 test('een werkboek toont dag, dagdeel en stuk, met de positie in de vierdaagse', () => {
   const pad = padVoorRoute('#/doc/17', invoer)
-  assert.deepEqual(pad.delen.map((d) => d.label), ['Werkbank', 'Dag 1 · de spiegel', '1.3', 'werkboek'])
+  assert.deepEqual(pad.delen.map((d) => d.label), ['Werkbank', 'Dag 1 · de spiegel', "1.3 · ETF's, theorie en oefening", 'werkboek'])
   assert.equal(pad.delen[0].route, '#/')
   assert.equal(pad.delen[1].route, '#/status')
   assert.equal(pad.delen[2].route, '#/blok/1.3')
@@ -57,7 +57,7 @@ test('de korte positie zegt dezelfde cijfers', () => {
 
 test('een dagdeel zelf is de laatste stap en heeft geen route', () => {
   const pad = padVoorRoute('#/blok/1.3', invoer)
-  assert.equal(pad.delen[pad.delen.length - 1].label, '1.3')
+  assert.equal(pad.delen[pad.delen.length - 1].label, "1.3 · ETF's, theorie en oefening")
   assert.equal(pad.delen[pad.delen.length - 1].route, null)
   assert.equal(pad.positie, 'Dagdeel 3 van 16 · Dag 1 van 4')
 })
@@ -77,7 +77,7 @@ test('een stuk zonder dagdeel krijgt geen verzonnen dag', () => {
 
 test('een bron met een dagdeel erft de plek, een losse bron niet', () => {
   const met = padVoorRoute('#/bron/211', invoer)
-  assert.deepEqual(met.delen.map((d) => d.label), ['Werkbank', 'Dag 1 · de spiegel', '1.3', 'Morningstar ETF-rapport'])
+  assert.deepEqual(met.delen.map((d) => d.label), ['Werkbank', 'Dag 1 · de spiegel', "1.3 · ETF's, theorie en oefening", 'Morningstar ETF-rapport'])
   assert.equal(met.positie, 'Dagdeel 3 van 16 · Dag 1 van 4')
   const zonder = padVoorRoute('#/bron/500', invoer)
   assert.deepEqual(zonder.delen.map((d) => d.label), ['Werkbank', 'Bronnen', 'FSMA'])

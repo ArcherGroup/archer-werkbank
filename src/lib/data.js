@@ -39,15 +39,46 @@ export async function laadBron(id) {
   return data
 }
 
-export async function laadNotities(doelType, doelId) {
-  const { data, error } = await sb
+/* Alle rijen van een query, pagina na pagina, tot een echt lege pagina.
+   De server mag minder teruggeven dan gevraagd (max-rows): de volgende pagina begint daarom
+   bij het aantal ontvangen rijen, en stopt pas als de server niets meer geeft.
+   Lukt een pagina niet, dan is het hele resultaat een fout: nooit een afgekapte lijst. */
+const MAX_PAGINAS = 10000
+
+async function leesAllePaginas(bouwQuery, paginaGrootte = 1000) {
+  const rijen = []
+  const gezien = new Set()
+  let offset = 0
+  for (let pagina = 0; pagina < MAX_PAGINAS; pagina++) {
+    const { data, error } = await bouwQuery().range(offset, offset + paginaGrootte - 1)
+    if (error) throw error
+    if (!data || data.length === 0) return rijen
+    let nieuw = 0
+    for (const rij of data) {
+      const sleutel = rij?.id == null ? null : String(rij.id)
+      if (sleutel !== null) {
+        if (gezien.has(sleutel)) continue
+        gezien.add(sleutel)
+      }
+      rijen.push(rij)
+      nieuw++
+    }
+    if (nieuw === 0) throw new Error('De paginering herhaalt dezelfde rijen; het resultaat is niet volledig betrouwbaar.')
+    offset += data.length
+  }
+  throw new Error('Te veel pagina\u2019s bij het laden; het resultaat is niet volledig.')
+}
+
+// Notities van één doel, standaard nieuwste eerst. Intern altijd stabiel gepagineerd op (created_at, id).
+export async function laadNotities(doelType, doelId, { client = sb, oplopend = false, paginaGrootte = 1000 } = {}) {
+  const rijen = await leesAllePaginas(() => client
     .from('notities')
     .select('*')
     .eq('doel_type', doelType)
     .eq('doel_id', String(doelId))
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return data ?? []
+    .order('created_at', { ascending: true })
+    .order('id', { ascending: true }), paginaGrootte)
+  return oplopend ? rijen : rijen.reverse()
 }
 
 export async function laadAlleNotities() {
@@ -60,15 +91,13 @@ export async function laadAlleNotities() {
   return data ?? []
 }
 
-// Voor de comments-laag: alle notities, niet alleen de recentste dertig.
-export async function laadNotitiesAlles() {
-  const { data, error } = await sb
+// Voor de comments-laag: alle notities, oudste eerst, stabiel gepagineerd op (created_at, id).
+export async function laadNotitiesAlles({ client = sb, paginaGrootte = 1000 } = {}) {
+  return leesAllePaginas(() => client
     .from('notities')
     .select('*')
     .order('created_at', { ascending: true })
-    .limit(1000)
-  if (error) throw error
-  return data ?? []
+    .order('id', { ascending: true }), paginaGrootte)
 }
 
 export async function laadHistoriek(documentId) {
@@ -108,6 +137,52 @@ export async function voegNotitieToe(doelType, doelId, tekst, auteur) {
     .select()
     .single()
   if (error) throw error
+  return data
+}
+
+const NOTITIE_DOELEN = ['blok', 'document', 'bron']
+
+// Het echte nummer van een notitie via zijn client_id, of null. Alleen lezen.
+export async function zoekNotitieIdViaClientId(clientId, client = sb) {
+  const { data, error } = await client.from('notities').select('id').eq('client_id', String(clientId)).maybeSingle()
+  if (error) throw error
+  return data?.id ?? null
+}
+
+/* Bewaar een comment precies één keer. De identiteit is `client_id` (= rij.client_id of
+   rij.lokaal_id): een herhaald verzoek maakt niets nieuws en overschrijft nooit de bewaarde
+   tekst. Daarna lezen we de echte rij terug; ontbreekt die, dan is het een fout, geen succes.
+   Een antwoord op een nog lokale ouder wordt via de client_id van die ouder vertaald. */
+export async function bewaarNotitieIdempotent(rij, client = sb) {
+  const clientId = rij?.client_id || rij?.lokaal_id
+  if (!clientId) throw new Error('Een client_id of lokaal_id is nodig om een comment idempotent te bewaren.')
+  if (typeof rij.tekst !== 'string' || !rij.tekst.trim()) throw new Error('Een lege comment wordt niet bewaard.')
+  if (!NOTITIE_DOELEN.includes(rij.doel_type) || rij.doel_id == null || String(rij.doel_id) === '') {
+    throw new Error('Een comment heeft een bekend doel nodig.')
+  }
+  let ouder = rij.parent_id ?? null
+  if (typeof ouder === 'string' && ouder.startsWith('lokaal-')) {
+    const echt = await zoekNotitieIdViaClientId(ouder, client)
+    if (echt == null) throw new Error('De ouder van dit antwoord is nog niet bewaard. Probeer het straks opnieuw.')
+    ouder = echt
+  }
+  const context = rij.anker_context !== null && typeof rij.anker_context === 'object' && !Array.isArray(rij.anker_context) ? rij.anker_context : null
+  const payload = {
+    client_id: String(clientId),
+    doel_type: rij.doel_type,
+    doel_id: String(rij.doel_id),
+    tekst: rij.tekst,
+    auteur: rij.auteur,
+    anker: rij.anker || null,
+    anker_context: context,
+    parent_id: ouder,
+  }
+  if (rij.created_at) payload.created_at = rij.created_at
+  const { error } = await client.from('notities').upsert(payload, { onConflict: 'client_id', ignoreDuplicates: true })
+  if (error) throw error
+  const { data, error: leesFout } = await client.from('notities').select('*').eq('client_id', String(clientId)).maybeSingle()
+  if (leesFout) throw leesFout
+  if (!data || data.id == null || data.id === '') throw new Error('De comment is niet teruggelezen uit de werkbank; ik beschouw hem niet als bewaard.')
   return data
 }
 

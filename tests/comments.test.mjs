@@ -77,7 +77,7 @@ test('sorteren is stabiel en zet het brief-comment voor het spreektekst-comment'
 })
 
 test('open tellen, routes en korte tekst', () => {
-  assert.equal(telOpen(lijst), 6)
+  assert.equal(telOpen(lijst), 5) // gesprekken: 1,3,4,5,6 open; antwoord 2 telt niet apart, 7 is opgelost
   assert.equal(routeVoor(lijst[0]), '#/doc/9')
   assert.equal(routeVoor(lijst[2]), '#/blok/1.3')
   assert.equal(routeVoor(lijst[5]), '#/bron/211')

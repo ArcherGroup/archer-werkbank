@@ -1,0 +1,19 @@
+.plek-knop.plek-dagdeel {
+  min-height: 34px;
+  max-width: 52ch;
+  padding: 5px 9px;
+  border: 1px solid var(--lijn);
+  border-radius: 7px;
+  background: var(--kaart);
+  color: var(--tekst-1);
+  font-weight: 650;
+}
+.plek-knop.plek-dagdeel:hover {
+  background: var(--accent-zacht);
+  border-color: var(--accent-ring);
+  color: var(--accent-ink);
+  text-decoration: none;
+}
+@media (max-width: 680px) {
+  .plek-knop.plek-dagdeel { min-height: 44px; max-width: 44ch; }
+}

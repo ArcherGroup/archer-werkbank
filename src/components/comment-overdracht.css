@@ -1,0 +1,19 @@
+.cbalk .cbalk-schakel span { display: inline; }
+.cbalk-hulpmiddelen { padding: 0 .75rem .4rem; }
+.co-hulpmiddelen { display: flex; align-items: flex-start; flex-wrap: wrap; justify-content: space-between; gap: .5rem; width: 100%; }
+.wachtrij-melding { max-width: min(42rem, calc(100vw - 1.5rem)); flex-wrap: wrap; white-space: normal; }
+.co-overdracht { font-size: .75rem; color: var(--tekst-2); }
+.co-overdracht > summary { cursor: pointer; width: fit-content; padding: .4rem .3rem; font-weight: 600; }
+.co-overdracht > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: .25rem; }
+.co-inhoud { padding: .6rem .8rem; max-width: 38rem; border: 1px solid var(--lijn); border-radius: .65rem; background: var(--kaart); }
+.co-inhoud p { margin: 0 0 .65rem; line-height: 1.55; }
+.co-acties { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; }
+.co-bestand { display: none; }
+.co-hint { margin-top: .6rem !important; color: var(--tekst-3); }
+.co-bevestig { margin-top: .75rem; border-top: 1px solid var(--lijn); padding-top: .75rem; }
+.co-bevestig strong { color: var(--tekst-1); overflow-wrap: anywhere; }
+.co-bericht, .co-fout { margin-top: .75rem !important; }
+.co-fout { color: var(--rood); }
+.comment-omgeving { margin: .4rem .8rem; padding: .6rem .8rem; border: 1px solid var(--lijn); border-radius: .6rem; background: var(--kaart); font-size: .8rem; display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+.comment-omgeving a { color: var(--accent); font-weight: 600; }
+@media (max-width: 600px) { .co-inhoud { max-width: 100%; } .co-acties .knop { min-height: 2.25rem; } }

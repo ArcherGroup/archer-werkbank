@@ -1,132 +1,112 @@
-import React, { useState } from 'react'
-import { sb } from '../lib/supabase'
-import { kleurVoor, initialen } from '../lib/data'
-import { meld } from './meldingen'
-import { Icoon } from './Icoon'
+import React, { useEffect, useRef, useState } from 'react'
+import * as D from '../lib/data'
+import * as W from '../lib/comment-wachtrij'
+
 import { CommentThread } from './comment-thread'
 import { groepeerReacties } from '../lib/comments'
+import { sleutelVoorKlad, leesKlad, bewaarKlad, wisKlad } from '../lib/comment-draft'
 import { useOnbewaard } from '../hooks/useOnbewaard'
 
-/* Notities bij een stuk, dagdeel of bron; live zichtbaar voor beide gebruikers.
-   Bewaren is optimistisch: de notitie staat er meteen, de server volgt.
-   Mislukt het, dan komt de tekst terug in het veld en blijft er een melding. */
-
-function datumKort(iso) {
-  try {
-    return new Date(iso).toLocaleString('nl-BE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-  } catch {
-    return ''
-  }
+const koppeling = (v) => typeof v === 'string' ? { anker: v, anker_context: null } : v?.anker ? v : null
+function leesKoppeling(key) {
+  try { return koppeling(JSON.parse(leesKlad(key + ':anker') || 'null')) } catch { return null }
 }
 
-export function Notities({ doelType, doelId, auteur, notities, onWijzig, compact = false, anker = null, onAnkerWissen, agent = null, opToon = null, opAntwoord = null, opLos = null, opAfwijzen = null, opHeropenen = null, opBewaren = null }) {
-  const [tekst, setTekst] = useState('')
+export function Notities({ doelType, doelId, auteur, notities = [], onWijzig, compact = false,
+  anker = null, onAnkerWissen, agent = null, opToon = null, opAntwoord = null,
+  opLos = null, opAfwijzen = null, opHeropenen = null, opBewaren = null,
+  geselecteerdId = null, opSelecteer = null, opGeplaatst = null, focusTeller = 0, lichaamTekst = null,
+}) {
+  const key = sleutelVoorKlad({ auteur, doelType, doelId })
+  const [tekst, setTekst] = useState(() => leesKlad(key))
+  const [gekoppeld, setGekoppeld] = useState(() => koppeling(anker) || leesKoppeling(key))
   const [bezig, setBezig] = useState(false)
-  const [wachtend, setWachtend] = useState([])
   const [fout, setFout] = useState('')
+  const [melding, setMelding] = useState('')
+  const [geheugenMelding, setGeheugenMelding] = useState(false)
+  const [laatstePlaatsing, setLaatstePlaatsing] = useState(null)
+  const invoerRef = useRef(null)
+  const lijstRef = useRef(null)
+  const vorigeKey = useRef(key)
+  const vorigeSelectie = useRef(null)
+  const vorigeFocus = useRef(0)
   useOnbewaard(!!tekst.trim() || bezig)
 
+  useEffect(() => {
+    if (laatstePlaatsing == null) return
+    const bevestigd = notities.some((n) => !n.lokaal && !n.wachtend && [n.client_id, n.id].some((id) => id != null && String(id) === laatstePlaatsing))
+    if (bevestigd) { setGeheugenMelding(false); setMelding('Gedeeld met de werkbank.') }
+  }, [laatstePlaatsing, notities])
+
+  useEffect(() => {
+    if (vorigeKey.current === key) return
+    vorigeKey.current = key
+    setTekst(leesKlad(key)); setGekoppeld(leesKoppeling(key)); setFout(''); setMelding('')
+  }, [key])
+  useEffect(() => {
+    if (anker) { const k = koppeling(anker); setGekoppeld(k); bewaarKlad(key + ':anker', JSON.stringify(k)) }
+  }, [anker, key])
+  useEffect(() => {
+    if (!focusTeller || focusTeller === vorigeFocus.current) return
+    vorigeFocus.current = focusTeller
+    if (!anker) { setGekoppeld(null); wisKlad(key + ':anker') }
+    invoerRef.current?.focus()
+  }, [focusTeller, anker, key])
+  useEffect(() => {
+    if (geselecteerdId == null || vorigeSelectie.current === String(geselecteerdId)) return
+    const el = [...(lijstRef.current?.querySelectorAll('[data-thread-key]') || [])].find((n) => n.dataset.threadKey === String(geselecteerdId) || n.dataset.threadId === String(geselecteerdId))
+    const paneel = el?.closest('.inspector')
+    if (el && paneel) { paneel.scrollTop += el.getBoundingClientRect().top - paneel.getBoundingClientRect().top - 20; vorigeSelectie.current = String(geselecteerdId) }
+  }, [geselecteerdId, notities])
+
+  const losmaken = () => { setGekoppeld(null); wisKlad(key + ':anker'); onAnkerWissen?.(anker) }
+  const schrijf = (value) => { setTekst(value); bewaarKlad(key, value) }
   const bewaar = async () => {
     const t = tekst.trim()
     if (!t || bezig) return
-    const tijdelijk = {
-      id: `tmp-${Date.now()}`,
-      tekst: t,
-      auteur,
-      anker,
-      created_at: new Date().toISOString(),
-      wachtend: true,
-    }
-    setWachtend((w) => [...w, tijdelijk])
-    setTekst('')
-    setFout('')
-    setBezig(true)
+    setBezig(true); setFout(''); setMelding('')
+    const payload = { doel_type: doelType, doel_id: String(doelId), tekst: t, auteur, anker: gekoppeld?.anker || null, anker_context: gekoppeld?.anker_context || null }
     try {
-      if (opBewaren) {
-        await opBewaren({ doel_type: doelType, doel_id: doelId, tekst: t, auteur, anker })
-      } else {
-        const { error } = await sb.from('notities').insert({ doel_type: doelType, doel_id: String(doelId), tekst: t, auteur, anker })
-        if (error) throw error
+      let resultaat
+      if (opBewaren) resultaat = await opBewaren(payload)
+      else {
+        const lokaal = W.voegToeAanWachtrij({ ...payload, lokaal_id: W.lokaalId() })
+        await W.verwerkWachtrij((rij) => D.bewaarNotitieIdempotent(rij))
+        const id = W.zoekGedeeldId(lokaal.item.lokaal_id)
+        resultaat = id ? { lokaal: false, data: { ...payload, id, client_id: lokaal.item.client_id } } : { lokaal: true, item: W.alsNotitie(lokaal.item), opslagBeperkt: W.opslagStatus().duurzaam === false }
       }
-      onAnkerWissen?.(anker)
+      const rij = resultaat?.data || resultaat?.item
+      setLaatstePlaatsing(rij ? String(rij.client_id || rij.id) : null)
+      setTekst(''); wisKlad(key); losmaken()
+      const geheugen = resultaat?.lokaal === true && resultaat?.opslagBeperkt === true
+      setGeheugenMelding(geheugen)
+      setMelding(geheugen ? 'Alleen tijdelijk in het geheugen, niet duurzaam bewaard. Houd dit tabblad open en exporteer je comments.' : resultaat?.lokaal ? 'Op dit toestel bewaard. Het delen is nog niet bevestigd.' : 'Gedeeld met de werkbank.')
       onWijzig?.()
-      meld('Notitie bewaard.')
+      if (rij) opGeplaatst?.(rij)
     } catch {
-      setFout('Niet bewaard — de notitie staat terug in het veld. Probeer opnieuw.')
-      setTekst(t)
-    } finally {
-      setWachtend((w) => w.filter((x) => x.id !== tijdelijk.id))
-      setBezig(false)
-    }
+      setFout('Niet bevestigd. Je tekst blijft in het invoerveld staan. Probeer opnieuw.')
+    } finally { setBezig(false) }
   }
 
-  const verwijder = async (n) => {
-    setWachtend((w) => [...w]) // geen visuele sprong; de rij verdwijnt pas na de server
-    const { error } = await sb.from('notities').delete().eq('id', n.id)
-    if (error) {
-      meld('Verwijderen mislukte. De notitie staat er nog.', { fout: true })
-      return
-    }
-    meld('Notitie verwijderd.')
-    onWijzig?.()
-  }
+  const groepen = groepeerReacties(notities)
+  const geselecteerd = groepen.find((n) => String(n.id) === String(geselecteerdId) || String(n.client_id || '') === String(geselecteerdId))
+  const zichtbaar = geselecteerd ? [geselecteerd] : groepen
+  const toonInvoer = geselecteerdId == null || !!gekoppeld
 
-  const eigen = notities ?? []
-  const alle = [...eigen, ...wachtend]
-
-  return (
-    <div className="notities-blok">
-      <div className="notitie-invoer">
-        {anker && <div className="notitie-anker"><span>Bij geselecteerde tekst</span><blockquote>{anker}</blockquote><button type="button" className="knop zacht" onClick={() => onAnkerWissen?.(anker)} disabled={bezig}>Selectie losmaken</button></div>}
-        <textarea
-          readOnly={bezig}
-          value={tekst}
-          placeholder="Schrijf een notitie, zichtbaar voor iedereen…"
-          aria-label="Nieuwe notitie"
-          onChange={(e) => setTekst(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-              e.preventDefault()
-              bewaar()
-            }
-          }}
-        />
-        {fout && (
-          <div className="veld-fout" role="alert">
-            <Icoon naam="waarschuwing" maat={13} />
-            {fout}
-          </div>
-        )}
-        <div className="rij">
-          <span className="meta-klein">{tekst.trim() ? '⌘⏎ om te bewaren' : ''}</span>
-          <button className="knop primair" onClick={bewaar} disabled={!tekst.trim() || bezig}>
-            {bezig ? 'Bewaren…' : 'Notitie bewaren'}
-          </button>
-        </div>
-      </div>
-
-      {alle.length === 0 && !compact && (
-        <div className="leeg-notities">
-          Nog geen notities hier. Schrijf de eerste: wat valt op, wat moet er nog gebeuren?
-        </div>
-      )}
-
-      {groepeerReacties(alle).map((root) => (
-        <CommentThread
-          key={root.id}
-          thread={{ root }}
-          naam={auteur}
-          documentId={doelType === 'document' ? doelId : null}
-          agent={doelType === 'document' ? agent : null}
-          compact={compact}
-          opToon={opToon}
-          opAntwoord={opAntwoord}
-          opLos={opLos}
-          opAfwijzen={opAfwijzen}
-          opHeropenen={opHeropenen}
-          opVerwijderen={root.wachtend ? null : verwijder}
-        />
-      ))}
+  return <div className="notities-blok">
+    {geselecteerd && <div className="doc-comment-keuze"><button type="button" className="knop zacht" onClick={() => opSelecteer?.(null)}>Alle gesprekken ({groepen.length})</button></div>}
+    {toonInvoer && <div className="notitie-invoer">
+      {gekoppeld ? <div className="notitie-anker"><span>Bij geselecteerde tekst</span><blockquote>{gekoppeld.anker}</blockquote><button type="button" className="knop zacht" onClick={losmaken} disabled={bezig}>Selectie losmaken</button></div> : <p className="doc-comment-hulp">Algemene comment. Selecteer tekst in het stuk als je een precieze passage wilt bespreken.</p>}
+      <textarea ref={invoerRef} readOnly={bezig} value={tekst} placeholder="Schrijf je comment…" aria-label="Nieuwe comment" onChange={(e) => schrijf(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); bewaar() } }} />
+      {fout && <p className="veld-fout" role="alert">{fout}</p>}
+      <div className="rij"><span className="meta-klein">{tekst.trim() ? '⌘⏎ om te plaatsen' : ''}</span><button type="button" className="knop primair" onClick={bewaar} disabled={!tekst.trim() || bezig}>{bezig ? 'Plaatsen…' : 'Comment plaatsen'}</button></div>
+    </div>}
+    {melding && <p className={`doc-comment-bewaring${geheugenMelding ? ' veld-fout' : ''}`} role={geheugenMelding ? 'alert' : 'status'}>{melding}</p>}
+    {!groepen.length && !compact && <p className="leeg-notities">Nog geen gesprekken. Selecteer een passage en kies Comment toevoegen, of plaats hierboven een algemene comment.</p>}
+    <div ref={lijstRef}>
+      {zichtbaar.map((root) => <div className={`doc-gesprek-keuze${geselecteerd === root ? ' geselecteerd' : ''}`} key={root.client_id || root.id} data-thread-key={root.client_id || root.id} data-thread-id={root.id}>
+        <CommentThread thread={{ root }} naam={auteur} documentId={doelType === 'document' ? doelId : null} agent={doelType === 'document' ? agent : null} compact={compact} lichaamTekst={lichaamTekst} opToon={opToon} opAntwoord={opAntwoord} opLos={opLos} opAfwijzen={opAfwijzen} opHeropenen={opHeropenen} />
+      </div>)}
     </div>
-  )
+  </div>
 }
