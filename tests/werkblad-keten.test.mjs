@@ -67,7 +67,7 @@ test('ook op een smal scherm heeft de dagdeelpagina toegang tot comments', () =>
   assert.match(pagina, />Sluit comments</)
 })
 
-test('dagdeel 1.3 krijgt het visuele overzicht en behoudt alle stukken in een gesloten lijst', () => {
+test('elk dagdeel krijgt het visuele overzicht en behoudt alle stukken in een gesloten lijst', () => {
   const pagina = html(BlokPagina, { blokId: '1.3' })
   assert.match(pagina, /Overzicht van het dagdeel/)
   assert.match(pagina, /Het dagdeel wordt geladen/)
@@ -77,7 +77,8 @@ test('dagdeel 1.3 krijgt het visuele overzicht en behoudt alle stukken in een ge
   assert.match(pagina, /href="#\/doc\/10"/)
   assert.match(pagina, /Alle stukken van dit dagdeel \(2\)/, 'de kaart telt de echte stukken van dit dagdeel')
   const ander = html(BlokPagina, { blokId: '2.1', blokken: [{ ...blok, id: '2.1', code: '2.1' }] })
-  assert.doesNotMatch(ander, /Overzicht van het dagdeel/)
+  assert.match(ander, /Overzicht van het dagdeel/, 'de visuele laag is er voor elk dagdeel, niet alleen 1.3')
+  assert.match(ander, /Het dagdeel wordt geladen/, 'zonder geladen brief toont de kaart eerlijk dat hij laadt, geen verzonnen inhoud')
 })
 
 test('ieder dagdeel heeft dezelfde voorbereidingsketen met bronnen en eigen stukken', () => {

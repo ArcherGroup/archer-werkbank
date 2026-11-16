@@ -17,6 +17,8 @@ import { bouwDagdeelVisie, stukkenVanDagdeel, vergelijkEigenaar } from '../lib/d
 import { useEscape } from '../hooks/useEscape'
 
 const VOLGORDE = { brief: 0, spreektekst: 1, slides: 2, werkboek: 3, oefening: 4, research: 5, bron: 6, algemeen: 7, overig: 8 }
+// De visuele laag is er voor echte dagdelen (code X.Y), niet voor Voorbereiding/algemeen/bronnen.
+const isDagdeelCode = (id) => /^\d+\.\d+$/.test(String(id ?? ''))
 
 export function BlokPagina({ blokId, naar, blokken, documentenMeta, bronnen = [], beslissingen = [], naam, herlaad, tik, geladen, gegevensBeschikbaar, opBewaren, opAntwoord, opLos, opAfwijzen, opHeropenen, lokaleComments = [], gedeeldeComments = null }) {
   const blok = blokken.find((b) => b.id === blokId)
@@ -82,7 +84,7 @@ export function BlokPagina({ blokId, naar, blokken, documentenMeta, bronnen = []
   }, [briefMeta?.id, blokId, tik])
 
   useEffect(() => {
-    if (blokId !== '1.3' || !masterMeta?.id) { setMasterplan(null); setMasterStatus('ontbreekt'); return }
+    if (!isDagdeelCode(blokId) || !masterMeta?.id) { setMasterplan(null); setMasterStatus('ontbreekt'); return }
     let actief = true
     setMasterplan(null)
     setMasterStatus('laden')
@@ -154,8 +156,8 @@ export function BlokPagina({ blokId, naar, blokken, documentenMeta, bronnen = []
   const huidigeStatus = optimistisch ?? blok.status
   const stelling = stellingVoorDagdeel(brief, briefMeta, blok.id)
   const doel = doelVoorDagdeel(brief, briefMeta, blok.id)
-  const visie = blokId === '1.3' ? bouwDagdeelVisie({ blok, blokken, documentenMeta, brief, masterplan }) : null
-  const eigenaarVerschil = blokId === '1.3' ? vergelijkEigenaar({ blok, documentenMeta, brief }) : null
+  const visie = isDagdeelCode(blokId) ? bouwDagdeelVisie({ blok, blokken, documentenMeta, brief, masterplan }) : null
+  const eigenaarVerschil = isDagdeelCode(blokId) ? vergelijkEigenaar({ blok, documentenMeta, brief }) : null
   const StukkenOmhulsel = visie ? 'details' : React.Fragment
   const ggrBeslissing = beslissingen.find((b) => /ggr/i.test(b.titel || '') && b.status !== 'beslist')
 
