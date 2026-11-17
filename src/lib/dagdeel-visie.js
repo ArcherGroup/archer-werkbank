@@ -191,6 +191,19 @@ function leesOpbouw(inhoud) {
   return punten.map((punt, i) => leesTijdvak(punt, i + 1))
 }
 
+/* Het overall begin- en einduur van een dagdeel uit zijn brief, voor de dagtijdlijn.
+   Alleen tijdvakken met een geldig begin en einde tellen; zonder tijd is er geen schema.
+   De minuten worden opgeteld voor zover de brief ze geeft (dag 1 heeft enkel minuten). */
+export function schemaUitBrief(inhoud) {
+  const tv = leesOpbouw(typeof inhoud === 'string' ? inhoud : '')
+  const tijden = tv.filter((t) => t.begin && t.einde)
+  const minuten = tv.reduce((s, t) => s + (t.minuten || 0), 0)
+  if (!tijden.length) return minuten > 0 ? { begin: null, einde: null, minuten } : null
+  const begin = tijden.map((t) => t.begin).sort()[0]
+  const einde = tijden.map((t) => t.einde).sort().slice(-1)[0]
+  return { begin, einde, minuten: minuten || null }
+}
+
 /* ------------------------------------------------------------------ het masterplan */
 
 /* Dezelfde dagkoppen als in de visie, maar als losse lijst voor het pad bovenaan. */

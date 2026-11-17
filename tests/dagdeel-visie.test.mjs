@@ -141,3 +141,15 @@ test('bij het laden zegt de kaart dat eerlijk in plaats van dat de inhoud ontbre
   assert.match(html, /laden|geladen/i)
   assert.doesNotMatch(html, /nog geen programma/i)
 })
+
+test('het dag-niveau toont een tijdlijn van de dagdelen met hun begin- en einduur', () => {
+  const dagSchema = { '1.1': { begin: '09:00', einde: '10:30', minuten: 90 }, '1.3': { begin: '14:00', einde: '15:30', minuten: 90 } }
+  const html = h({ beginNiveau: 'dag', dagSchema })
+  assert.match(html, /class="dv-dagtijdlijn"/)
+  assert.match(html, /09:00 tot 10:30/)
+  assert.match(html, /14:00 tot 15:30/)
+  assert.ok(html.indexOf('09:00 tot 10:30') < html.indexOf('14:00 tot 15:30'), 'de tijdlijn staat op volgorde van begintijd')
+  assert.match(html, /href="#\/blok\/1\.1"/, 'een tijdvlak klikt door naar het dagdeel')
+  const zonder = h({ beginNiveau: 'dag' })
+  assert.doesNotMatch(zonder, /dv-dagtijdlijn/, 'zonder schema geen tijdlijn')
+})

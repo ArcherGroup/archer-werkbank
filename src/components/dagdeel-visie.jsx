@@ -77,7 +77,7 @@ function DagdeelWidget({ actief, code, titel, status, aantalTekst, open, opOpen,
   )
 }
 
-export function DagdeelVisie({ blok, blokken = [], stukkenPerBlok, kaart = {}, masterplanId, laden = false, fout = false, masterLaden = false, masterFout = false, eigenaarVerschil = null, ggrBeslissing = null, beginNiveau = null, beginOpen = null, naar }) {
+export function DagdeelVisie({ blok, blokken = [], stukkenPerBlok, kaart = {}, dagSchema = {}, masterplanId, laden = false, fout = false, masterLaden = false, masterFout = false, eigenaarVerschil = null, ggrBeslissing = null, beginNiveau = null, beginOpen = null, naar }) {
   const basis = useId()
   const [stand, setStand] = useState(() => {
     const hersteld = herstelVisieStand(typeof window === 'undefined' ? null : window.history.state, blok)
@@ -211,6 +211,21 @@ export function DagdeelVisie({ blok, blokken = [], stukkenPerBlok, kaart = {}, m
                 <button type="button" key={d.dag} aria-pressed={String(dag) === String(d.dag)} onClick={() => kies({ dag: d.dag, niveau: 'dag' })}>Dag {d.dag}</button>
               ))}
             </div>}
+            {dagdelen.some((b) => dagSchema[b.id]?.begin) && (
+              <div className="dv-dagtijdlijn" aria-label="Dagindeling op tijd">
+                {dagdelen
+                  .filter((b) => dagSchema[b.id]?.begin)
+                  .sort((a, b) => dagSchema[a.id].begin.localeCompare(dagSchema[b.id].begin))
+                  .map((b) => (
+                    <Pad key={b.id} className={`dv-tijdvlak${b.id === blok?.id ? ' actief' : ''}`} route={b.route} naar={naar}
+                      title={`${b.code} · ${b.titel}`}>
+                      <span className="dv-tijdvlak-code">{b.code}</span>
+                      <strong>{dagSchema[b.id].begin} tot {dagSchema[b.id].einde}</strong>
+                      <small>{b.titel}</small>
+                    </Pad>
+                  ))}
+              </div>
+            )}
             {dagdelen.length ? <div className="dv-daglijst">{dagdelen.map((b) => {
               const vanRij = Array.isArray(stukkenPerBlok?.[b.id]) ? stukkenPerBlok[b.id] : []
               return (

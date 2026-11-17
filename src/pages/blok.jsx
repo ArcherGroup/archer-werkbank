@@ -13,7 +13,7 @@ import { vindBrief, stellingVoorDagdeel, doelVoorDagdeel } from '../lib/werkblad
 import { meld } from '../components/meldingen'
 import { Voorbereidingsketen } from '../components/voorbereidingsketen'
 import { DagdeelVisie } from '../components/dagdeel-visie'
-import { bouwDagdeelVisie, stukkenVanDagdeel, vergelijkEigenaar } from '../lib/dagdeel-visie'
+import { bouwDagdeelVisie, stukkenVanDagdeel, vergelijkEigenaar, schemaUitBrief } from '../lib/dagdeel-visie'
 import { useEscape } from '../hooks/useEscape'
 
 const VOLGORDE = { brief: 0, spreektekst: 1, slides: 2, werkboek: 3, oefening: 4, research: 5, bron: 6, algemeen: 7, overig: 8 }
@@ -46,6 +46,7 @@ export function BlokPagina({ blokId, naar, blokken, documentenMeta, bronnen = []
   const [briefStatus, setBriefStatus] = useState('laden')
   const [masterplan, setMasterplan] = useState(null)
   const [masterStatus, setMasterStatus] = useState('laden')
+  const [dagSchema, setDagSchema] = useState({})
   const [aanHetMaken, setAanHetMaken] = useState(false)
   const [vraagOpen, setVraagOpen] = useState(false)
   const [nieuwDocId, setNieuwDocId] = useState(null)
@@ -96,6 +97,23 @@ export function BlokPagina({ blokId, naar, blokken, documentenMeta, bronnen = []
     }).catch(() => { if (actief) { setMasterplan(null); setMasterStatus('fout') } })
     return () => { actief = false }
   }, [masterMeta?.id, blokId, tik])
+
+  // Het dagschema: begin/einduur van elk dagdeel van deze dag, uit hun brieven.
+  // Zo toont het dag-niveau de dagindeling in één oogopslag, ook van de andere dagdelen.
+  useEffect(() => {
+    if (!blok || !isDagdeelCode(blokId)) { setDagSchema({}); return }
+    const dagDelen = (Array.isArray(blokken) ? blokken : []).filter((b) => b?.dag === blok.dag && isDagdeelCode(b.id))
+    let actief = true
+    Promise.all(dagDelen.map(async (b) => {
+      const meta = vindBrief(documentenMeta, b.id)
+      if (!meta?.id) return [b.id, null]
+      try {
+        const doc = await D.laadDocument(meta.id)
+        return [b.id, doc && doc.blok_id === b.id ? schemaUitBrief(doc.inhoud) : null]
+      } catch { return [b.id, null] }
+    })).then((pairs) => { if (actief) setDagSchema(Object.fromEntries(pairs)) })
+    return () => { actief = false }
+  }, [blok?.dag, blokId, documentenMeta, blokken, tik])
 
   // Sluit eerst de invoer en diens werkverliesbewaking; navigeer pas nadat
   // het nieuwe stuk aantoonbaar is aangemaakt.
@@ -229,6 +247,7 @@ export function BlokPagina({ blokId, naar, blokken, documentenMeta, bronnen = []
           </div>
 
           {visie && <DagdeelVisie blok={blok} blokken={blokken} kaart={visie} naar={naar} stukkenPerBlok={stukkenPerBlok}
+            dagSchema={dagSchema}
             masterplanId={masterMeta?.id} eigenaarVerschil={eigenaarVerschil} ggrBeslissing={ggrBeslissing}
             laden={briefStatus === 'laden' && gegevensBeschikbaar?.documenten !== false}
             fout={briefStatus === 'fout' || gegevensBeschikbaar?.documenten === false}

@@ -11,7 +11,7 @@ async function laad() {
   try { return await import('../src/lib/dagdeel-visie.js') }
   catch (e) { if (e.code === 'ERR_MODULE_NOT_FOUND') return {}; throw e }
 }
-const { bouwDagdeelVisie, vergelijkEigenaar, stukkenBijTijdvak, stukkenVanDagdeel } = await laad()
+const { bouwDagdeelVisie, vergelijkEigenaar, stukkenBijTijdvak, stukkenVanDagdeel, schemaUitBrief } = await laad()
 
 const BLOK_13 = { id: '1.3', code: '1.3', titel: "ETF's", dag: 1, spreker: 'Anthony' }
 const BLOK_21 = { id: '2.1', code: '2.1', titel: 'Vastgoed keynote', dag: 2 }
@@ -498,4 +498,21 @@ test('een volledig ander dagdeel geeft zijn eigen gegevens: er is niets van 1.3 
     plek: { ggr: 'Meten wat er bleef', gebouw: 'Het dak' },
   })
   assert.doesNotMatch(JSON.stringify(v), /ETF|14:00|groeimotor|spiegel|GGR te keren/)
+})
+
+test('schemaUitBrief geeft het overall begin- en einduur en de som van de minuten', () => {
+  const brief = '## Opbouw\n1. **09:00 tot 10:00: keynote (60 min, luisteren).** Uitleg.\n2. **10:00 tot 10:30: oefening (30 min, doen).** Invullen.'
+  assert.deepEqual(schemaUitBrief(brief), { begin: '09:00', einde: '10:30', minuten: 90 })
+})
+
+test('schemaUitBrief zonder klok (dag 1) geeft enkel de minuten, geen verzonnen tijden', () => {
+  const brief = '## Opbouw\n1. **Opening (15 min, luisteren).** Start.\n2. **Oefening (30 min, doen).** Werk.'
+  assert.deepEqual(schemaUitBrief(brief), { begin: null, einde: null, minuten: 45 })
+})
+
+test('schemaUitBrief zonder Opbouw of zonder bruikbare invoer geeft null', () => {
+  assert.equal(schemaUitBrief('## Doel\nGeen opbouw hier.'), null)
+  assert.equal(schemaUitBrief(''), null)
+  assert.equal(schemaUitBrief(null), null)
+  assert.equal(schemaUitBrief(undefined), null)
 })
