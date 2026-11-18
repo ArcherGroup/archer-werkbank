@@ -24,6 +24,8 @@ import { piekDoel, wisDoel, telGesprekken, telOpen } from '../lib/comments'
 import { leesSecties, plekVanKlik } from '../lib/secties'
 import { WerkboekBalk } from '../components/werkboek-balk'
 import { WerkboekWalkthrough } from '../components/werkboek-walkthrough'
+import { OefenModus } from '../components/oefen-modus'
+import { isSpreektekst } from '../lib/spreektekst'
 import './document.css'
 
 /* Dezelfde comment kan hier (nog) lokaal staan en tegelijk al als server-rij in
@@ -37,7 +39,7 @@ function samenVoegenComments(server, lokaal, docId) {
 export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta = [], beslissingen = [], herlaad, tik, opWalkthrough, opLos, opAntwoord, opAfwijzen, opHeropenen, opBewaren, lokaleComments = [], gedeeldeComments = null }) {
   const [doc, setDoc] = useState(null)
   const [geladen, setGeladen] = useState(false)
-  const [modus, setModus] = useState('lees') // lees | bewerk | historiek
+  const [modus, setModus] = useState('lees') // lees | bewerk | historiek | oefen (alleen spreektekst)
   const [klad, setKlad] = useState('')
   const [basis, setBasis] = useState('')
   const [historiek, setHistoriek] = useState([])
@@ -639,6 +641,11 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
     },
   }
 
+  // Oefenmodus: schermvullend en los van zijbalk, comments en bewerken.
+  if (modus === 'oefen' && isSpreektekst(doc)) {
+    return <OefenModus markdown={body} titel={doc.titel} opSluit={() => setModus('lees')} />
+  }
+
   return (
     <>
       <main className="hoofd">
@@ -663,6 +670,12 @@ export function DocPagina({ docId, naar, naam, blokken, bronnen, documentenMeta 
             </button>
             {modus === 'lees' && (
               <>
+                {isSpreektekst(doc) && (
+                  <button type="button" className="knop" aria-pressed={false} onClick={() => setModus('oefen')}>
+                    <Icoon naam="spreektekst" maat={14} />
+                    Oefenmodus
+                  </button>
+                )}
                 <button className="knop primair" onClick={() => setModus('bewerk')}>
                   <Icoon naam="bewerken" maat={14} />
                   Bewerken
